@@ -71,10 +71,12 @@ sdn-tcp-pubsub/
 │   └── test_pubsub.py          # Automated test suite for protocol, broker & triggers
 ├── requirements.txt            # Python dependencies (os-ken, requests, matplotlib)
 ├── TEAM_MEMBER_GUIDE.md        # Step-by-step execution guide for each member & OS
+├── SDN_TCP_PubSub_Teammate_Handbook.pdf # PDF handbook for teammates & viva prep
 └── README.md                   # Complete documentation, setup, and viva guide
 ```
 
-> 📖 **Looking for role-specific running steps?** See the dedicated [TEAM_MEMBER_GUIDE.md](TEAM_MEMBER_GUIDE.md) for individual Member 1, 2, and 3 commands across Arch Linux, Ubuntu VMs, and macOS.
+> 📄 **PDF Handbook Available:** Download or share [SDN_TCP_PubSub_Teammate_Handbook.pdf](SDN_TCP_PubSub_Teammate_Handbook.pdf) with your teammates for a quick summary of roles, setup, step-by-step commands, and viva Q&A.  
+> 📖 **Role-Specific Steps:** See [TEAM_MEMBER_GUIDE.md](TEAM_MEMBER_GUIDE.md) for individual Member 1, 2, and 3 commands across Arch Linux, Ubuntu VMs, and macOS.
 
 ---
 
