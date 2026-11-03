@@ -137,8 +137,16 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 
 1. **Terminal 1 — Launch the OS-Ken OpenFlow Controller:**
    ```bash
+   # In Bash / Zsh:
    source .venv/bin/activate
    osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
+
+   # In Fish shell (CachyOS):
+   source .venv/bin/activate.fish
+   osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
+
+   # OR directly without activating:
+   .venv/bin/osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
    ```
    *Expected Controller log:* Switches `s1`, `s2`, `s3`, `s4` connect and initialize.
 

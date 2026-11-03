@@ -147,8 +147,16 @@ python3 pubsub/publisher.py --broker 127.0.0.1 --port 5002 --topic sensors/temp 
 
 #### Step 1: Start the SDN Controller (Terminal 1)
 ```bash
+# If using Bash/Zsh:
 source .venv/bin/activate
 osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
+
+# If using Fish shell (CachyOS default), either activate using .fish:
+source .venv/bin/activate.fish
+osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
+
+# OR run directly without activating:
+.venv/bin/osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
 ```
 
 #### Step 2: Launch the Mininet Diamond Topology (Terminal 2)
