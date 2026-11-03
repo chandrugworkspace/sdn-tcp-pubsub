@@ -3,26 +3,58 @@ controller/sdn_controller.py - Dynamic OpenFlow 1.3 SDN Controller (Member 2 & 3
 
 Features:
 - Layer-4 TCP Topic Traffic Classification (Port 5001 -> Fast Path, Port 5002 -> Standard Path)
-- REST API (/sdn/policy) for dynamic application-level topic promotion
+- Built-in HTTP REST API (:8080 /sdn/policy) for dynamic application-level topic promotion
 - Loop-free directed ARP forwarding preventing broadcast storms in diamond topology
 - Real-time link failure detection (port_status_handler) with sub-second failover to backup path
 """
 
 import json
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from os_ken.base import app_manager
 from os_ken.controller import ofp_event
 from os_ken.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER, set_ev_cls
 from os_ken.ofproto import ofproto_v1_3
 from os_ken.lib.packet import packet, ethernet, ipv4, tcp, arp, ether_types
-from os_ken.app.wsgi import ControllerBase, WSGIApplication, route
-from webob import Response
 
-SDN_INSTANCE_NAME = "pubsub_sdn_api"
+
+class SDNRestHandler(BaseHTTPRequestHandler):
+    """HTTP handler for the SDN Controller REST API."""
+    sdn_app = None
+
+    def do_POST(self):
+        if self.path == "/sdn/policy":
+            length = int(self.headers.get("Content-Length", 0))
+            body_bytes = self.rfile.read(length)
+            try:
+                body = json.loads(body_bytes.decode("utf-8"))
+                client_ip = body.get("client_ip")
+                topic = body.get("topic", "unknown")
+                action = body.get("action")
+                if action == "PROMOTE_FAST_PATH" and client_ip and self.sdn_app:
+                    self.sdn_app.install_dynamic_promotion(client_ip, topic)
+                    resp = json.dumps({"status": "PROMOTED"}).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(resp)))
+                    self.end_headers()
+                    self.wfile.write(resp)
+                    return
+            except Exception as e:
+                print(f"[SDN-API-ERR] Invalid policy request: {e}")
+            self.send_response(400)
+            self.end_headers()
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, format, *args):
+        # Suppress default request logging to keep console clean
+        return
 
 
 class PubSubSDNController(app_manager.OSKenApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
-    _CONTEXTS = {"wsgi": WSGIApplication}
 
     def __init__(self, *args, **kwargs):
         super(PubSubSDNController, self).__init__(*args, **kwargs)
@@ -39,8 +71,18 @@ class PubSubSDNController(app_manager.OSKenApp):
             "10.0.0.5": (4, 3),
         }
 
-        wsgi = kwargs["wsgi"]
-        wsgi.register(SDNRestController, {SDN_INSTANCE_NAME: self})
+        # Start built-in REST API server on port 8080
+        self._start_rest_server(port=8080)
+
+    def _start_rest_server(self, port=8080):
+        SDNRestHandler.sdn_app = self
+        try:
+            server = HTTPServer(("0.0.0.0", port), SDNRestHandler)
+            t = threading.Thread(target=server.serve_forever, daemon=True)
+            t.start()
+            self.logger.info(f"[SDN-API] REST API listening on http://0.0.0.0:{port}/sdn/policy")
+        except Exception as e:
+            self.logger.warning(f"[SDN-API] Could not bind REST API on port {port}: {e}")
 
     def add_flow(self, datapath, priority, match, actions, idle_timeout=0):
         ofproto = datapath.ofproto
@@ -217,20 +259,3 @@ class PubSubSDNController(app_manager.OSKenApp):
             data=msg.data if msg.buffer_id == ofproto.OFP_NO_BUFFER else None
         )
         datapath.send_msg(out)
-
-
-class SDNRestController(ControllerBase):
-    def __init__(self, req, link, data, **config):
-        super(SDNRestController, self).__init__(req, link, data, **config)
-        self.sdn_app = data[SDN_INSTANCE_NAME]
-
-    @route("policy", "/sdn/policy", methods=["POST"])
-    def update_policy(self, req, **kwargs):
-        body = json.loads(req.body.decode("utf-8"))
-        client_ip = body.get("client_ip")
-        topic = body.get("topic", "unknown")
-        action = body.get("action")
-        if action == "PROMOTE_FAST_PATH" and client_ip:
-            self.sdn_app.install_dynamic_promotion(client_ip, topic)
-            return Response(content_type="application/json", body=json.dumps({"status": "PROMOTED"}).encode("utf-8"))
-        return Response(status=400)

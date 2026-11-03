@@ -148,7 +148,7 @@ python3 pubsub/publisher.py --broker 127.0.0.1 --port 5002 --topic sensors/temp 
 #### Step 1: Start the SDN Controller (Terminal 1)
 ```bash
 source .venv/bin/activate
-osken-manager --ofp-tcp-listen-port 6633 --wsapi-port 8080 controller/sdn_controller.py
+osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
 ```
 
 #### Step 2: Launch the Mininet Diamond Topology (Terminal 2)

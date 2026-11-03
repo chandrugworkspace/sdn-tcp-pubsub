@@ -138,7 +138,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 1. **Terminal 1 — Launch the OS-Ken OpenFlow Controller:**
    ```bash
    source .venv/bin/activate
-   osken-manager --ofp-tcp-listen-port 6633 --wsapi-port 8080 controller/sdn_controller.py
+   osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
    ```
    *Expected Controller log:* Switches `s1`, `s2`, `s3`, `s4` connect and initialize.
 
