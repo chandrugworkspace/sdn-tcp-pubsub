@@ -17,6 +17,21 @@ import threading
 import time
 from collections import defaultdict
 
+# ANSI Terminal Styling
+C_RESET = "\033[0m"
+C_BOLD = "\033[1m"
+C_DIM = "\033[2m"
+C_RED = "\033[1;31m"
+C_GREEN = "\033[1;32m"
+C_YELLOW = "\033[1;33m"
+C_BLUE = "\033[1;34m"
+C_MAGENTA = "\033[1;35m"
+C_CYAN = "\033[1;36m"
+C_WHITE = "\033[1;37m"
+BG_BLUE = "\033[44m"
+BG_GREEN = "\033[42m"
+BG_MAGENTA = "\033[45m"
+
 # Ensure local pubsub module directory is available for import
 _pubsub_dir = os.path.dirname(os.path.abspath(__file__))
 if _pubsub_dir not in sys.path:
@@ -33,6 +48,18 @@ except ImportError:
     requests = None
 
 
+def print_banner(host: str, prio_port: int, std_port: int, sdn_url: str):
+    print(f"\n{C_CYAN}┌─────────────────────────────────────────────────────────────────┐{C_RESET}")
+    print(f"{C_CYAN}│{C_BOLD}{C_WHITE}            📡 TCP PUBLISH–SUBSCRIBE CENTRAL BROKER              {C_RESET}{C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}│{C_DIM}     Course: Computer Networks (UE25CS243A) — Project #9          {C_RESET}{C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}├─────────────────────────────────────────────────────────────────┤{C_RESET}")
+    print(f"{C_CYAN}│{C_RESET}  {C_GREEN}● Priority Port   :{C_RESET} {host}:{prio_port} {C_GREEN}[FAST PATH]{C_RESET}{' ' * 19}{C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}│{C_RESET}  {C_YELLOW}● Standard Port   :{C_RESET} {host}:{std_port} {C_YELLOW}[STANDARD PATH]{C_RESET}{' ' * 15}{C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}│{C_RESET}  {C_BLUE}● SDN Webhook URL :{C_RESET} {sdn_url:<37}{C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}│{C_RESET}  {C_MAGENTA}● Burst Promotion :{C_RESET} >= 15 msgs triggers Fast Path Promotion    {C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}└─────────────────────────────────────────────────────────────────┘{C_RESET}\n")
+
+
 class PubSubBroker:
     def __init__(self, host: str, priority_port: int, std_port: int, sdn_url: str):
         self.host = host
@@ -41,9 +68,7 @@ class PubSubBroker:
         self.sdn_url = sdn_url
 
         self.lock = threading.Lock()
-        # topic -> set of subscriber sockets
         self.subscriptions = defaultdict(set)
-        # topic -> message count for dynamic SDN trigger
         self.topic_counts = defaultdict(int)
         self.promoted_topics = set()
         self.server_sockets = []
@@ -61,14 +86,15 @@ class PubSubBroker:
                 "timestamp": time.time()
             }
             resp = requests.post(f"{self.sdn_url}/sdn/policy", json=payload, timeout=0.5)
-            print(f"[SDN-HOOK] Triggered SDN policy '{action}' for topic '{topic}' (host {client_ip}) -> Status {resp.status_code}")
+            print(f" {C_BOLD}{C_MAGENTA}⚡ [SDN-HOOK]{C_RESET} Triggered policy {C_YELLOW}'{action}'{C_RESET} for topic {C_CYAN}'{topic}'{C_RESET} (host {client_ip}) -> Status {C_GREEN}{resp.status_code} OK{C_RESET}")
         except Exception as e:
-            print(f"[SDN-HOOK] Controller notification skipped: {e}")
+            print(f" {C_DIM}[SDN-HOOK] Controller notification skipped ({e}){C_RESET}")
 
     def handle_client(self, conn: socket.socket, addr, listen_port: int):
         client_ip, client_port = addr
-        traffic_class = "HIGH_PRIORITY" if listen_port == self.priority_port else "STANDARD"
-        print(f"[CONNECT] {client_ip}:{client_port} on port {listen_port} ({traffic_class})")
+        is_prio = (listen_port == self.priority_port)
+        badge = f"{C_GREEN}[HIGH_PRIO :5001]{C_RESET}" if is_prio else f"{C_YELLOW}[STANDARD  :5002]{C_RESET}"
+        print(f" {C_CYAN}▶ [CONNECT]{C_RESET} {client_ip}:{client_port} via {badge}")
 
         try:
             while self.running:
@@ -84,13 +110,13 @@ class PubSubBroker:
                         self.subscriptions[topic].add(conn)
                         sub_count = len(self.subscriptions[topic])
                     send_msg(conn, {"type": "SUB_ACK", "topic": topic, "status": "OK"})
-                    print(f"[SUBSCRIBE] {client_ip} subscribed to '{topic}' (Total subs: {sub_count})")
+                    print(f" {C_GREEN}✓ [SUBSCRIBE]{C_RESET} {client_ip} joined {C_CYAN}'{topic}'{C_RESET} (Active subs on topic: {C_BOLD}{sub_count}{C_RESET})")
 
                 elif msg_type == "UNSUBSCRIBE":
                     with self.lock:
                         self.subscriptions[topic].discard(conn)
                     send_msg(conn, {"type": "UNSUB_ACK", "topic": topic, "status": "OK"})
-                    print(f"[UNSUBSCRIBE] {client_ip} unsubscribed from '{topic}'")
+                    print(f" {C_YELLOW}✗ [UNSUBSCRIBE]{C_RESET} {client_ip} left {C_CYAN}'{topic}'{C_RESET}")
 
                 elif msg_type == "PUBLISH":
                     with self.lock:
@@ -98,24 +124,23 @@ class PubSubBroker:
                         count = self.topic_counts[topic]
                         subscribers = list(self.subscriptions.get(topic, []))
 
-                    # Dynamic Socket-SDN Integration:
-                    # If a standard topic gets heavy burst traffic (>= 15 msgs), promote host to Fast Path
+                    # Dynamic Socket-SDN Trigger:
                     if count >= 15 and topic not in self.promoted_topics:
                         self.promoted_topics.add(topic)
+                        print(f"\n {C_BOLD}{C_MAGENTA}🚀 [BURST-DETECTED]{C_RESET} Topic {C_CYAN}'{topic}'{C_RESET} reached {C_BOLD}{count}{C_RESET} msgs! Triggering SDN Fast Path...")
                         threading.Thread(
                             target=self.notify_sdn_controller,
                             args=(topic, "PROMOTE_FAST_PATH", client_ip),
                             daemon=True
                         ).start()
 
-                    # Forward message to all active subscribers of this topic
                     out_msg = {
                         "type": "MESSAGE",
                         "topic": topic,
                         "seq": msg.get("seq", 0),
                         "payload": msg.get("payload", ""),
                         "pub_timestamp_ns": msg.get("pub_timestamp_ns", time.time_ns()),
-                        "traffic_class": traffic_class
+                        "traffic_class": "HIGH_PRIORITY" if is_prio else "STANDARD"
                     }
 
                     dead_subs = []
@@ -130,15 +155,17 @@ class PubSubBroker:
                             for d in dead_subs:
                                 self.subscriptions[topic].discard(d)
 
-                    # Send reliability ACK back to publisher
+                    delivered = len(subscribers) - len(dead_subs)
                     send_msg(conn, {
                         "type": "PUB_ACK",
                         "seq": msg.get("seq", 0),
-                        "delivered_to": len(subscribers) - len(dead_subs)
+                        "delivered_to": delivered
                     })
+                    seq_str = f"#{msg.get('seq', 0):<3}"
+                    print(f" {C_BLUE}✉ [PUBLISH {seq_str}]{C_RESET} Topic: {C_CYAN}'{topic}'{C_RESET} | Delivered: {C_BOLD}{delivered}{C_RESET} subs | ACK returned")
 
         except Exception as e:
-            print(f"[ERROR] Client {client_ip}:{client_port}: {e}")
+            print(f" {C_RED}✖ [ERROR]{C_RESET} Client {client_ip}:{client_port}: {e}")
         finally:
             with self.lock:
                 for subs in self.subscriptions.values():
@@ -147,7 +174,7 @@ class PubSubBroker:
                 conn.close()
             except OSError:
                 pass
-            print(f"[DISCONNECT] {client_ip}:{client_port}")
+            print(f" {C_DIM}■ [DISCONNECT] {client_ip}:{client_port}{C_RESET}")
 
     def start_listener(self, port: int):
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -156,7 +183,6 @@ class PubSubBroker:
         server.listen(128)
         with self.lock:
             self.server_sockets.append(server)
-        print(f"[BROKER] Listening on {self.host}:{port}")
         while self.running:
             try:
                 conn, addr = server.accept()
@@ -170,16 +196,17 @@ class PubSubBroker:
             pass
 
     def run(self):
+        print_banner(self.host, self.priority_port, self.std_port, self.sdn_url)
         t1 = threading.Thread(target=self.start_listener, args=(self.priority_port,), daemon=True)
         t2 = threading.Thread(target=self.start_listener, args=(self.std_port,), daemon=True)
         t1.start()
         t2.start()
-        print("[BROKER] Pub-Sub Broker running. Press Ctrl+C to stop.")
+        print(f" {C_GREEN}● Broker active and listening. Press {C_BOLD}Ctrl+C{C_RESET}{C_GREEN} to stop.{C_RESET}\n")
         try:
             while self.running:
                 time.sleep(1)
         except KeyboardInterrupt:
-            print("\n[BROKER] Shutting down.")
+            print(f"\n{C_YELLOW}■ Shutting down Broker gracefully...{C_RESET}")
             self.running = False
             with self.lock:
                 for s in self.server_sockets:
@@ -187,6 +214,7 @@ class PubSubBroker:
                         s.close()
                     except OSError:
                         pass
+            print(f"{C_GREEN}✔ Broker stopped.{C_RESET}\n")
 
 
 if __name__ == "__main__":

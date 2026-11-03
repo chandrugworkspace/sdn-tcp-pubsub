@@ -17,6 +17,33 @@ from os_ken.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER, set_ev
 from os_ken.ofproto import ofproto_v1_3
 from os_ken.lib.packet import packet, ethernet, ipv4, tcp, arp, ether_types
 
+# ANSI Terminal Colors
+C_RESET = "\033[0m"
+C_BOLD = "\033[1m"
+C_DIM = "\033[2m"
+C_RED = "\033[1;31m"
+C_GREEN = "\033[1;32m"
+C_YELLOW = "\033[1;33m"
+C_BLUE = "\033[1;34m"
+C_MAGENTA = "\033[1;35m"
+C_CYAN = "\033[1;36m"
+C_WHITE = "\033[1;37m"
+BG_RED = "\033[41;1;37m"
+BG_GREEN = "\033[42;1;30m"
+BG_MAGENTA = "\033[45;1;37m"
+
+
+def print_controller_banner():
+    print(f"\n{C_CYAN}┌─────────────────────────────────────────────────────────────────┐{C_RESET}")
+    print(f"{C_CYAN}│{C_BOLD}{C_WHITE}            🎛️  DYNAMIC OPENFLOW 1.3 SDN CONTROLLER               {C_RESET}{C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}├─────────────────────────────────────────────────────────────────┤{C_RESET}")
+    print(f"{C_CYAN}│{C_RESET}  ● OpenFlow Listen : {C_GREEN}0.0.0.0:6633 (OpenFlow 1.3){C_RESET}{' ' * 21}{C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}│{C_RESET}  ● REST Webhook API: {C_BLUE}http://0.0.0.0:8080/sdn/policy{C_RESET}{' ' * 18}{C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}│{C_RESET}  ● Fast Path       : {C_GREEN}s1 -> s2 -> s4 [20 Mbps, 2ms delay]{C_RESET}{' ' * 13}{C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}│{C_RESET}  ● Standard Path   : {C_YELLOW}s1 -> s3 -> s4 [5 Mbps, 25ms delay]{C_RESET}{' ' * 13}{C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}│{C_RESET}  ● Dynamic Failover: {C_MAGENTA}Sub-second auto-reroute on link down{C_RESET}{' ' * 12}{C_CYAN}│{C_RESET}")
+    print(f"{C_CYAN}└─────────────────────────────────────────────────────────────────┘{C_RESET}\n")
+
 
 class SDNRestHandler(BaseHTTPRequestHandler):
     """HTTP handler for the SDN Controller REST API."""
@@ -41,7 +68,7 @@ class SDNRestHandler(BaseHTTPRequestHandler):
                     self.wfile.write(resp)
                     return
             except Exception as e:
-                print(f"[SDN-API-ERR] Invalid policy request: {e}")
+                print(f" {C_RED}✖ [SDN-API-ERR] Invalid webhook body: {e}{C_RESET}")
             self.send_response(400)
             self.end_headers()
         else:
@@ -49,7 +76,6 @@ class SDNRestHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def log_message(self, format, *args):
-        # Suppress default request logging to keep console clean
         return
 
 
@@ -71,7 +97,7 @@ class PubSubSDNController(app_manager.OSKenApp):
             "10.0.0.5": (4, 3),
         }
 
-        # Start built-in REST API server on port 8080
+        print_controller_banner()
         self._start_rest_server(port=8080)
 
     def _start_rest_server(self, port=8080):
@@ -80,9 +106,9 @@ class PubSubSDNController(app_manager.OSKenApp):
             server = HTTPServer(("0.0.0.0", port), SDNRestHandler)
             t = threading.Thread(target=server.serve_forever, daemon=True)
             t.start()
-            self.logger.info(f"[SDN-API] REST API listening on http://0.0.0.0:{port}/sdn/policy")
+            print(f" {C_GREEN}✔ [SDN-API]{C_RESET} REST webhook API listening on {C_BLUE}http://0.0.0.0:{port}/sdn/policy{C_RESET}")
         except Exception as e:
-            self.logger.warning(f"[SDN-API] Could not bind REST API on port {port}: {e}")
+            print(f" {C_YELLOW}⚠ [SDN-API]{C_RESET} Could not bind REST API on port {port}: {e}")
 
     def add_flow(self, datapath, priority, match, actions, idle_timeout=0):
         ofproto = datapath.ofproto
@@ -115,12 +141,13 @@ class PubSubSDNController(app_manager.OSKenApp):
             self.add_flow(datapath, 10, parser.OFPMatch(in_port=1), [parser.OFPActionOutput(2)])
             self.add_flow(datapath, 10, parser.OFPMatch(in_port=2), [parser.OFPActionOutput(1)])
 
-        self.logger.info(f"[SDN] Switch s{dpid} connected and initialized.")
+        role = "Transit Switch" if dpid in (2, 3) else "Edge Switch"
+        print(f" {C_GREEN}✔ [SDN-SWITCH]{C_RESET} Switch {C_BOLD}s{dpid}{C_RESET} ({role}) connected and OpenFlow 1.3 table initialized.")
 
     def get_inter_switch_port(self, dpid: int, use_fast_path: bool) -> int:
         """Returns the correct egress port on s1 or s4 for the chosen path."""
         if not self.fast_path_alive:
-            use_fast_path = False  # Failover to s3 if s2 path is down
+            use_fast_path = False
         if dpid == 1:
             return 3 if use_fast_path else 4
         if dpid == 4:
@@ -136,13 +163,12 @@ class PubSubSDNController(app_manager.OSKenApp):
             p1 = s1.ofproto_parser
             p4 = s4.ofproto_parser
 
-            # Forward client_ip <-> Broker (10.0.0.3) via Fast Path (s1:3, s4:4)
             match_up = p1.OFPMatch(eth_type=0x0800, ipv4_src=client_ip, ipv4_dst="10.0.0.3")
             self.add_flow(s1, 50, match_up, [p1.OFPActionOutput(3)], idle_timeout=60)
 
             match_down = p4.OFPMatch(eth_type=0x0800, ipv4_src="10.0.0.3", ipv4_dst=client_ip)
             self.add_flow(s4, 50, match_down, [p4.OFPActionOutput(4)], idle_timeout=60)
-            self.logger.info(f"[SDN-POLICY] Promoted host {client_ip} (topic '{topic}') to FAST PATH (s1->s2->s4)")
+            print(f"\n {BG_MAGENTA} 🚀 DYNAMIC PROMOTION {C_RESET} Host {C_BOLD}{client_ip}{C_RESET} (topic '{topic}') promoted to {C_GREEN}FAST PATH (s1 -> s2 -> s4){C_RESET} mid-stream!\n")
 
     @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
     def port_status_handler(self, ev):
@@ -156,22 +182,22 @@ class PubSubSDNController(app_manager.OSKenApp):
         if dpid == 1 and port_no == 3:
             if is_down:
                 self.fast_path_alive = False
-                self.logger.warning("[SDN-FAILOVER] Fast Path Link (s1-s2) DOWN! Rerouting all flows via s3.")
+                print(f"\n {BG_RED} ⚠️  LINK FAILURE DETECTED {C_RESET} Fast Path Link {C_BOLD}(s1 <-> s2){C_RESET} is DOWN!")
+                print(f" {C_YELLOW}↳ Sub-second failover: Rerouting ALL flows to Backup Standard Path (s3)...{C_RESET}\n")
                 self.reroute_all_to_backup()
             else:
                 self.fast_path_alive = True
-                self.logger.info("[SDN-RECOVERY] Fast Path Link (s1-s2) UP! Restoring priority routing.")
+                print(f"\n {BG_GREEN} 🔄 LINK RECOVERED {C_RESET} Fast Path Link {C_BOLD}(s1 <-> s2){C_RESET} is UP!")
+                print(f" {C_GREEN}↳ Restoring normal priority-based routing.{C_RESET}\n")
 
     def reroute_all_to_backup(self):
         """Installs high-priority override rules on s1 and s4 to force traffic onto s3."""
         if 1 in self.datapaths and 4 in self.datapaths:
             s1, s4 = self.datapaths[1], self.datapaths[4]
             p1, p4 = s1.ofproto_parser, s4.ofproto_parser
-            # Send all s1 -> s4 traffic out port 4 (via s3)
             for dst_ip in ("10.0.0.3", "10.0.0.4", "10.0.0.5"):
                 m1 = p1.OFPMatch(eth_type=0x0800, ipv4_dst=dst_ip)
                 self.add_flow(s1, 60, m1, [p1.OFPActionOutput(4)], idle_timeout=30)
-            # Send all s4 -> s1 traffic out port 5 (via s3)
             for dst_ip in ("10.0.0.1", "10.0.0.2"):
                 m4 = p4.OFPMatch(eth_type=0x0800, ipv4_dst=dst_ip)
                 self.add_flow(s4, 60, m4, [p4.OFPActionOutput(5)], idle_timeout=30)
@@ -220,7 +246,6 @@ class PubSubSDNController(app_manager.OSKenApp):
         target_dpid, target_port = self.host_PortMap[dst_ip]
         tcp_pkt = pkt.get_protocol(tcp.tcp)
 
-        # Determine if flow belongs on Fast Path (TCP port 5001 or promoted host)
         use_fast = False
         if src_ip in self.promoted_ips or dst_ip in self.promoted_ips:
             use_fast = True
@@ -234,7 +259,6 @@ class PubSubSDNController(app_manager.OSKenApp):
 
         actions = [parser.OFPActionOutput(out_port)]
 
-        # Install specific OpenFlow rule for TCP or ICMP flow
         if tcp_pkt:
             match = parser.OFPMatch(
                 eth_type=0x0800,
@@ -244,8 +268,8 @@ class PubSubSDNController(app_manager.OSKenApp):
                 tcp_src=tcp_pkt.src_port,
                 tcp_dst=tcp_pkt.dst_port
             )
-            path_name = "FAST_PATH(s2)" if (use_fast and self.fast_path_alive) else "STD_PATH(s3)"
-            self.logger.info(f"[FLOW-INSTALL] s{dpid}: {src_ip}:{tcp_pkt.src_port} -> {dst_ip}:{tcp_pkt.dst_port} via {path_name} (port {out_port})")
+            path_name = f"{C_GREEN}FAST_PATH(s2){C_RESET}" if (use_fast and self.fast_path_alive) else f"{C_YELLOW}STD_PATH(s3){C_RESET}"
+            print(f" {C_CYAN}⚡ [FLOW-INSTALL]{C_RESET} s{dpid}: {src_ip}:{tcp_pkt.src_port} -> {dst_ip}:{tcp_pkt.dst_port} via {path_name} (egress port {out_port})")
             self.add_flow(datapath, 30, match, actions, idle_timeout=30)
         else:
             match = parser.OFPMatch(eth_type=0x0800, ipv4_src=src_ip, ipv4_dst=dst_ip)
