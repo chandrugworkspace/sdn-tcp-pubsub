@@ -57,6 +57,9 @@ sdn-tcp-pubsub/
 │   └── sdn_controller.py       # Member 2: OS-Ken OpenFlow 1.3 Controller + REST Webhook API
 ├── topology/
 │   └── pubsub_topo.py          # Member 2: 4-Switch Diamond Multi-Path Mininet Topology
+├── gui.py                      # Minimal Tkinter Desktop GUI (side-by-side terminal panes)
+├── tui.py                      # Minimal in-terminal GUI (Curses split-screen)
+├── run_local_demo.py           # Single-command automated demo runner
 ├── pubsub/
 │   ├── protocol.py             # Member 1: Length-prefixed framing protocol
 │   ├── broker.py               # Member 1 & 3: Multi-threaded TCP Broker + SDN webhook trigger
@@ -112,9 +115,18 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Quick Verification
+### Quick Verification & Minimal GUIs
 ```bash
-# Verify Mininet and OVS
+# Option A: Minimal Tkinter Desktop GUI (3 side-by-side terminal panes)
+python3 gui.py
+
+# Option B: Minimal In-Terminal GUI (Curses split-screen inside your terminal)
+python3 tui.py
+
+# Option C: Automated Local Test Runner
+python3 run_local_demo.py
+
+# Option D: Verify Mininet and OVS
 sudo mn --switch ovsbr --test pingall
 sudo mn -c
 
