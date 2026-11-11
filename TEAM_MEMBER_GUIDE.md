@@ -1,6 +1,11 @@
-# Team Member Execution Guide: Running by Role & Operating System
+# Team Member Execution & Presentation Guide (3 Members)
 
-This guide provides step-by-step instructions for each of the 3 team members to clone, set up, and run their respective parts of the **Publish–Subscribe Messaging System over TCP with SDN** on their own machines.
+**Course:** Computer Networks (UE25CS243A) — SDN-Socket Programming Mini Project  
+**Project Track:** Project #9 — Publish–Subscribe Messaging System over TCP with SDN  
+**Total Marks:** 40 Marks (Deliverable 1: 15M | Deliverable 2: 25M)  
+**Team Size:** 3 Members  
+
+This handbook provides step-by-step instructions for each of the 3 teammates: environment setup by OS, role division mapped to project marks, a 7-minute teacher presentation script, live demo execution steps, and an individual viva Q&A defense cheat sheet.
 
 ---
 
@@ -72,166 +77,157 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 
 ---
 
-## 3. Guide for Member 1: TCP Socket & Pub–Sub Lead
+## 3. Team Member Role Division & Evaluation Mapping
 
-### Role Focus (Deliverable 1 — 15 Marks)
-* **Files Owned:**
-  * `pubsub/protocol.py` (Wire framing, 4-byte big-endian header)
-  * `pubsub/broker.py` (Multi-port listeners, concurrency lock)
-  * `pubsub/subscriber.py` (Subscription handling, latency timestamps)
-  * `pubsub/publisher.py` (Reliability ACKs, sequence numbering)
+To secure full marks (40/40), the presentation is structured so each member demonstrates deep ownership of their engineering module:
 
-### How Member 1 Runs & Demonstrates Standalone Mode
-*(Can be run on any OS terminal without root/sudo and without Mininet!)*
-
-```
-[Terminal 1: Broker]  <--- TCP 5001 (Priority) & TCP 5002 (Standard)
-         ^                                   ^
-         |                                   |
-[Terminal 2 & 3: Subscribers]      [Terminal 4: Publisher]
-```
-
-1. **Terminal 1 — Start the Multi-Port Broker:**
-   ```bash
-   source .venv/bin/activate
-   python3 pubsub/broker.py --host 127.0.0.1 --priority-port 5001 --std-port 5002
-   ```
-
-2. **Terminal 2 — Start Standard Topic Subscriber:**
-   ```bash
-   source .venv/bin/activate
-   python3 pubsub/subscriber.py --broker 127.0.0.1 --port 5002 --topics sensors/temp --csv std_latency.csv
-   ```
-
-3. **Terminal 3 — Start High-Priority Topic Subscriber:**
-   ```bash
-   source .venv/bin/activate
-   python3 pubsub/subscriber.py --broker 127.0.0.1 --port 5001 --topics alerts/fire --csv prio_latency.csv
-   ```
-
-4. **Terminal 4 — Publish Messages:**
-   ```bash
-   source .venv/bin/activate
-   # Publish standard traffic
-   python3 pubsub/publisher.py --broker 127.0.0.1 --port 5002 --topic sensors/temp --count 20 --interval 0.2
-
-   # Publish priority traffic
-   python3 pubsub/publisher.py --broker 127.0.0.1 --port 5001 --topic alerts/fire --count 10 --interval 0.2
-   ```
-
-5. **Expected Output Verification:**
-   * Terminal 1 logs client connections, subscriptions, and message deliveries.
-   * Terminals 2 and 3 display real-time received payloads and one-way latency in milliseconds.
-   * Terminal 4 confirms `PUB_ACK` with `delivered_to: X subs`.
+| Member | Title / Role | Files Owned | Marks Mapped | Key Technical Concepts |
+| :--- | :--- | :--- | :--- | :--- |
+| **Member 1** | **TCP Socket & Pub-Sub Protocol Lead** | `pubsub/protocol.py`<br>`pubsub/broker.py`<br>`pubsub/subscriber.py`<br>`pubsub/publisher.py`<br>`tui.py` | **Deliverable 1**<br>(15 Marks) | Low-level TCP (`AF_INET`, `SOCK_STREAM`), 4-byte big-endian framing (`!I`), topic registry, delivery ACKs (`PUB_ACK`, `SUB_ACK`). |
+| **Member 2** | **SDN Controller & Topology Lead** | `topology/pubsub_topo.py`<br>`controller/sdn_controller.py` | **Deliverable 2**<br>(SDN Core) | 4-switch Diamond topology, OpenFlow 1.3 controller, port-based traffic steering (5001 = Fast Path, 5002 = Standard Path), loop-free directed ARP. |
+| **Member 3** | **Integration, Failover & Benchmarking Lead** | Dynamic Webhook in `broker.py`<br>`controller/sdn_controller.py`<br>`benchmarks/plot_metrics.py`<br>`local_latency_plot.png` | **Deliverable 2**<br>(Integration & QoS) | Application-to-SDN dynamic flow promotion (>15 msgs burst), sub-second link failure & fast failover (`link s1 s2 down`), latency graphs (55ms vs 6ms). |
 
 ---
 
-## 4. Guide for Member 2: Mininet Topology & SDN Controller Lead
+## 4. The 7-Minute Teacher Presentation Flow
 
-### Role Focus (Deliverable 2 — 25 Marks)
-* **Files Owned:**
-  * `topology/pubsub_topo.py` (4-Switch Diamond Multi-Path Topology)
-  * `controller/sdn_controller.py` (OpenFlow 1.3 Controller, Port Steering, Directed ARP)
+```
+[0:00 - 2:00] Member 1: Problem Statement, TCP Socket Framing & Live TUI Demo
+         │
+[2:00 - 4:30] Member 2: Mininet Diamond Topology, OpenFlow 1.3 & Directed ARP
+         │
+[4:30 - 7:00] Member 3: Dynamic QoS Webhook, Link Failover & Benchmark Latency Plot
+```
 
-### How Member 2 Runs & Demonstrates the SDN Network
+### Stage 1: Member 1 — TCP Socket & Pub-Sub Protocol (2 Minutes)
 
-1. **Terminal 1 — Launch the OS-Ken OpenFlow Controller:**
+#### Speech Script:
+> *"Good morning/afternoon, Sir/Ma'am. Our project is **Project #9: Publish–Subscribe Messaging System over TCP with SDN** (Course UE25CS243A).*  
+> *I was responsible for Deliverable 1: designing the core TCP transport layer and the pub-sub wire protocol.*  
+> *Because standard TCP is a continuous byte stream without application-level packet boundaries, consecutive packets can concatenate or fragment. To prevent this, I implemented a **4-byte big-endian length-prefixed framing header** using `struct.pack('!I')` in `pubsub/protocol.py`.*  
+> *Our Central Broker handles concurrent client threads and listens on two separate TCP ports: **5001 (Priority)** and **5002 (Standard)**. Every publish event requires end-to-end confirmation with a `PUB_ACK` packet containing sequence numbers and delivery counts."*
+
+#### Live Demonstration Action:
+1. Open the terminal and launch the In-Terminal GUI:
    ```bash
-   # In Bash / Zsh:
    source .venv/bin/activate
-   osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
-
-   # In Fish shell (CachyOS):
-   source .venv/bin/activate.fish
-   osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
-
-   # OR directly without activating:
-   .venv/bin/osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
+   python3 tui.py
    ```
-   *Expected Controller log:* Switches `s1`, `s2`, `s3`, `s4` connect and initialize.
+2. Press **`B`** $\rightarrow$ Show the Broker initializing ports 5001 and 5002 in Pane 1.
+3. Press **`S`** $\rightarrow$ Show the Subscriber connecting to topic `sensors/temp` in Pane 2.
+4. Press **`P`** $\rightarrow$ Show the Publisher sending a packet in Pane 3, the Broker routing it, the Subscriber receiving the sensor temperature, and the Publisher confirming `Broker ACK: OK` with round-trip latency.
 
-2. **Terminal 2 — Launch the Mininet Diamond Topology:**
+---
+
+### Stage 2: Member 2 — Mininet Diamond Topology & SDN Steering (2.5 Minutes)
+
+#### Speech Script:
+> *"Once the socket layer was verified, I developed the Software-Defined Networking architecture in Deliverable 2.*  
+> *We implemented a 4-switch diamond topology (`topology/pubsub_topo.py`):*  
+> *- **Upper Fast Path (`s1 -> s2 -> s4`):** 20 Mbps bandwidth, 2ms delay per hop.*  
+> *- **Lower Standard Path (`s1 -> s3 -> s4`):** 5 Mbps bandwidth, 25ms delay per hop.*  
+> *In diamond topologies, standard Layer 2 broadcasting causes ARP broadcast storms and packet looping. I solved this in `controller/sdn_controller.py` by implementing **directed ARP handling**—the controller intercepts ARP requests (`PacketIn`), inspects its internal IP-to-port table, and forwards ARP requests as point-to-point unicast packets, ensuring a loop-free network.*  
+> *The controller installs proactive OpenFlow 1.3 rules matching on destination TCP port: port 5001 traffic is steered to `s2` (Fast Path), while port 5002 traffic is steered to `s3` (Standard Path)."*
+
+#### Live Demonstration Action (inside Mininet):
+1. Show the OS-Ken Controller running:
    ```bash
-   # Clean previous state and start
+   osken-manager --ofp-tcp-listen-port 6633 controller/sdn_controller.py
+   ```
+2. Start Mininet:
+   ```bash
    sudo mn -c
    sudo python3 topology/pubsub_topo.py
    ```
-
-3. **Inside the `mininet>` prompt — Verify Network Reachability:**
+3. Test reachability:
    ```text
    mininet> pingall
    ```
-   *Verification:* 0% dropped packets. Loop-free directed ARP ensures no broadcast storm.
-
-4. **Inspect Flow Tables on Switch `s1`:**
+   *(Point to screen: 0% dropped packets).*
+4. Dump flow tables on switch `s1`:
    ```text
    mininet> sh ovs-ofctl -O OpenFlow13 dump-flows s1
    ```
-   *Verification:*
-   * Port 5001 traffic matches rule forwarding to port 3 (`s1 -> s2` Fast Path).
-   * Port 5002 traffic matches rule forwarding to port 4 (`s1 -> s3` Standard Path).
+   *(Point to screen: `tcp_dst=5001` forwards to output port 3 (`s2`), `tcp_dst=5002` forwards to output port 4 (`s3`)).*
 
 ---
 
-## 5. Guide for Member 3: Integration, Benchmarking & Failover Lead
+### Stage 3: Member 3 — Dynamic QoS, Failover & Benchmarks (2.5 Minutes)
 
-### Role Focus (Deliverable 2 Integration — 25 Marks)
-* **Files Owned:**
-  * `benchmarks/plot_metrics.py` (Latency & Scalability graphs)
-  * Webhook trigger logic in `pubsub/broker.py` & `controller/sdn_controller.py`
-  * `README.md` & Performance Evaluation Reports
+#### Speech Script:
+> *"I integrated the socket layer with the SDN control plane to achieve dynamic QoS adaptation, fault tolerance, and performance benchmarking.*  
+> *In real networks, IoT sensors initially sending low-priority telemetry may encounter an emergency requiring low-latency delivery. In `pubsub/broker.py`, I implemented a **burst threshold detector**.*  
+> *When message volume on a standard topic exceeds 15 packets, the Broker fires an HTTP REST webhook `POST /sdn/policy` to the controller. The controller immediately pushes higher-priority OpenFlow rules (`priority=50`) that promote that flow from `s3` to `s2` in real-time without terminating the TCP socket.*  
+> *Furthermore, if the primary fast link `s1-s2` experiences physical failure, the controller detects `OFPPS_LINK_DOWN` and instantly fails over all traffic to `s3` with **zero dropped connections**."*
 
-### How Member 3 Runs End-to-End Integration & Demonstrations
+#### Live Demonstration Action:
+1. In `tui.py`, press **`X`** (Burst 16 messages):
+   - Show Broker alert: `🚀 [BURST-DETECTED] Topic reached 15 msgs! Triggering SDN Fast Path (Port 5001)...`
+2. Demonstrate **Link Failure & Fast Failover** (inside Mininet):
+   ```text
+   mininet> link s1 s2 down
+   ```
+   - Show controller detecting link state change and rerouting to `s3`.
+   - Restore link:
+   ```text
+   mininet> link s1 s2 up
+   ```
+3. Show **Benchmark Latency Graph**:
+   - Open `local_latency_plot.png` or `latency_comparison.png`:
+   - Point out the metrics:
+     - **Standard Path:** Average Latency $\approx 55 - 60 \text{ ms}$ (5 Mbps link + 25ms delay).
+     - **Priority Path:** Average Latency $\approx 6 - 8 \text{ ms}$ (20 Mbps link + 2ms delay).
+     - **Result:** **~88% latency reduction** achieved through SDN path steering.
 
-Follow this procedure with Terminal 1 (Controller) and Terminal 2 (Mininet) already running:
+---
 
-#### A. Start Broker and Subscribers on Mininet Hosts
-Inside `mininet>` in Terminal 2:
-```text
-mininet> h3 python3 pubsub/broker.py --sdn-url http://127.0.0.1:8080 > broker.log 2>&1 &
-mininet> h4 python3 pubsub/subscriber.py --broker 10.0.0.3 --port 5002 --topics sensors/temp --csv std_latency.csv > sub_std.log 2>&1 &
-mininet> h5 python3 pubsub/subscriber.py --broker 10.0.0.3 --port 5001 --topics alerts/fire --csv prio_latency.csv > sub_prio.log 2>&1 &
-```
+## 5. Teacher Viva & Q&A Defense Cheat Sheet
 
-#### B. Demonstrate Dynamic SDN Webhook Promotion
-Publish 25 standard messages from `h1` and 25 priority messages from `h2`:
-```text
-mininet> h1 python3 pubsub/publisher.py --broker 10.0.0.3 --port 5002 --topic sensors/temp --count 25 --interval 0.3
-mininet> h2 python3 pubsub/publisher.py --broker 10.0.0.3 --port 5001 --topic alerts/fire --count 25 --interval 0.3
-```
+Be prepared for the teacher to question each teammate individually:
 
-*What happens automatically:*
-* After message #15, the Broker fires the REST webhook `POST /sdn/policy` to the controller.
-* The Controller pushes `priority=50` rules promoting `h1` from `s3` (Standard) to `s2` (Fast Path).
-* Check the logs to see latency drop from **~55–60 ms** down to **~6–10 ms**:
-  ```text
-  mininet> sh tail -n 25 sub_std.log
-  ```
+### Questions for Member 1 (Socket Programming & Protocol)
 
-#### C. Demonstrate the Challenging Scenario: Link Failure & Fast Failover
-While `h2` is streaming priority traffic, simulate bringing down the Fast Path:
-```text
-mininet> link s1 s2 down
-```
-*Observe:* In Terminal 1, the controller detects `OFPPS_LINK_DOWN` and immediately reroutes all traffic over `s3`. Messages continue flowing with zero disconnections.  
-Restore the link:
-```text
-mininet> link s1 s2 up
-```
+* **Q: Why did you use TCP instead of UDP for this Pub-Sub system?**  
+  *Answer:* Pub-Sub event systems (such as financial transactions or safety alarms) require guaranteed, ordered delivery and delivery acknowledgments (`PUB_ACK`). UDP is connectionless and loss-prone, whereas TCP provides reliability, flow control, and sequence tracking.
 
-#### D. Generate Latency Comparison Plot
-Exit Mininet (`mininet> exit`) and run:
-```bash
-python3 benchmarks/plot_metrics.py std_latency.csv prio_latency.csv latency_comparison.png
-```
-This produces `latency_comparison.png` for inclusion in your lab report and presentation slides.
+* **Q: Why did you need custom framing (`!I`) if TCP already guarantees delivery?**  
+  *Answer:* TCP is a byte-stream protocol, not a message-oriented protocol. It does not preserve application message boundaries. Consecutive packets can concatenate (framing error) or split across buffer chunks (fragmentation). The 4-byte big-endian header explicitly informs the receiver exactly how many bytes belong to the current message payload.
+
+* **Q: How does the Broker handle concurrent clients without blocking?**  
+  *Answer:* The broker spawns a dedicated worker thread per connected client socket (`threading.Thread`) and protects the shared subscription dictionary using a `threading.Lock()` to prevent race conditions during concurrent publishes and unsubscribes.
+
+---
+
+### Questions for Member 2 (SDN & OpenFlow)
+
+* **Q: Why does a diamond topology cause broadcast storms, and how did you prevent it?**  
+  *Answer:* Switches `s1, s2, s3, s4` form a physical cycle. Standard Layer 2 switches flood ARP broadcasts across all ports, causing packets to circulate infinitely. In `sdn_controller.py`, we intercept ARP requests, maintain an IP-to-port mapping table, and forward ARP requests as point-to-point unicast packets directly to the destination switch port.
+
+* **Q: Which OpenFlow match fields did you use for traffic steering?**  
+  *Answer:* We match on `eth_type=0x0800` (IPv4), `ip_proto=6` (TCP), and `tcp_dst=5001` vs `tcp_dst=5002` to forward packets to different physical switch output ports.
+
+* **Q: What is the difference between proactive and reactive flow installation?**  
+  *Answer:* Proactive flows are pre-installed by the controller during switch handshake (`switch_features`), avoiding `PacketIn` latency for known paths. Reactive flows are installed on demand when an unhandled packet triggers a `PacketIn` event.
+
+---
+
+### Questions for Member 3 (QoS, Dynamic Triggers & Failover)
+
+* **Q: How does the application layer communicate with the SDN controller?**  
+  *Answer:* We implemented an Application-to-SDN REST interface. The broker exposes an internal metric counter. When the count exceeds 15 packets, it makes an HTTP `POST` request to the controller's REST endpoint at `http://127.0.0.1:8080/sdn/policy` with the flow parameters.
+
+* **Q: What happens when the primary fast link `s1-s2` is cut?**  
+  *Answer:* The controller listens for OpenFlow PortStatus events (`OFPPortStatus`). When `OFPPS_LINK_DOWN` is received, the controller removes the `s2` flow entries and installs failover rules directing traffic to `s3`, achieving sub-second recovery without restarting client sockets.
+
+* **Q: Why is the latency difference so significant between the two paths?**  
+  *Answer:* The Fast Path has 20 Mbps bandwidth with 2ms per-hop link delay, while the Standard Path has 5 Mbps bandwidth with 25ms per-hop link delay, creating an empirical latency difference of ~6ms vs ~55ms.
 
 ---
 
 ## 6. Git Collaboration Workflow for Teammates
 
 ### Pulling the Latest Code
-Before starting work, always pull the latest changes from `main`:
+Before starting work or practicing the presentation, always pull the latest changes:
 ```bash
 git pull origin main
 ```
@@ -259,7 +255,7 @@ git push origin main
 
 ---
 
-## 7. Quick Troubleshooting
+## 7. Quick Troubleshooting Reference
 
 | Issue | Cause | Solution |
 | :--- | :--- | :--- |
