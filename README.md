@@ -87,9 +87,16 @@ sdn-tcp-pubsub/
 
 | Member | Primary Role | Files Owned | Rubric Components Covered |
 | :--- | :--- | :--- | :--- |
-| **Member 1** | **TCP Socket & Pub–Sub Engine Lead** | `pubsub/protocol.py`<br>`pubsub/broker.py`<br>`pubsub/publisher.py`<br>`pubsub/subscriber.py` | • TCP/UDP Socket Implementation (4M)<br>• Complete Application Functionality (4M) |
-| **Member 2** | **Mininet Topology & SDN Controller Lead** | `topology/pubsub_topo.py`<br>`controller/sdn_controller.py` | • Mininet + SDN Implementation (4M)<br>• Dynamic SDN Functionality (6M) |
+| **Member 1** | **TCP Socket & Pub–Sub Engine Lead** | `pubsub/protocol.py`<br>`pubsub/broker.py`<br>`pubsub/publisher.py`<br>`pubsub/subscriber.py`<br>`tui.py` | • TCP/UDP Socket Implementation (4M)<br>• Complete Application Functionality (4M)<br>• Wire Protocol & Framing |
+| **Member 2** | **Mininet Topology & SDN Controller Lead** | `topology/pubsub_topo.py`<br>`controller/sdn_controller.py` | • Mininet + SDN Implementation (4M)<br>• Dynamic SDN Functionality (6M)<br>• Directed Loop-Free ARP |
 | **Member 3** | **Integration, Testing & Evaluation Lead** | `benchmarks/plot_metrics.py`<br>`README.md`<br>Webhook logic in `broker.py` & `sdn_controller.py` | • Problem Understanding & Architecture (2M)<br>• Socket–SDN Integration (3M)<br>• Initial Testing & Demo (2M)<br>• Challenging Scenario / Robustness (4M)<br>• Performance Evaluation (5M)<br>• Documentation & Viva (6M) |
+
+### 7-Minute Teacher Presentation Flow
+1. **[0:00 - 2:00] Member 1:** Explains TCP framing challenges (`!I` header), multi-port Broker architecture, and launches `python3 tui.py` to demonstrate live publishing, routing, and `PUB_ACK`.
+2. **[2:00 - 4:30] Member 2:** Explains the 4-switch Diamond topology, directed ARP loop prevention, and proactive OpenFlow 1.3 flow steering rules (`tcp_dst=5001` vs `5002`).
+3. **[4:30 - 7:00] Member 3:** Demonstrates dynamic SDN burst promotion (>15 msgs), simulates link failure & sub-second failover (`link s1 s2 down`), and presents the empirical latency comparison plot (55ms vs 6ms).
+
+> 📖 **Comprehensive Script & Viva Defense:** Full word-for-word speech scripts and individual viva answers are documented in [TEAM_MEMBER_GUIDE.md](TEAM_MEMBER_GUIDE.md).
 
 ---
 
