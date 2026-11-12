@@ -68,9 +68,11 @@ sdn-tcp-pubsub/
 ├── topology/
 │   └── pubsub_topo.py          # Member 2: 4-Switch Diamond Multi-Path Mininet Topology
 ├── docs/
-│   └── openflow_topology_diagram.png # OpenFlow 1.3 Network Architecture & Topology Diagram
+│   ├── openflow_topology_diagram.png # OpenFlow 1.3 Network Architecture & Topology Diagram
+│   ├── SDN_TCP_PubSub_Complete_Guide.md # Comprehensive course & architecture guide
+│   └── Teammates_Project_Overview.md # 3-member execution & testing summary
 ├── gui.py                      # Minimal Tkinter Desktop GUI (side-by-side terminal panes)
-├── tui.py                      # Minimal in-terminal GUI (Curses split-screen)
+├── tui.py                      # Responsive In-Terminal TUI (Curses with true black background & test runners)
 ├── run_local_demo.py           # Single-command automated demo runner
 ├── pubsub/
 │   ├── protocol.py             # Member 1: Length-prefixed framing protocol
@@ -139,8 +141,19 @@ pip install -r requirements.txt
 # Option A: Minimal Tkinter Desktop GUI (3 side-by-side terminal panes)
 python3 gui.py
 
-# Option B: Minimal In-Terminal GUI (Curses split-screen inside your terminal)
+# Option B: Responsive In-Terminal TUI (Pure black background & live test runner)
 python3 tui.py
+
+# TUI Interactive Controls & Tests:
+#   [B] Toggle Broker (:5001 Priority, :5002 Standard)
+#   [S] Toggle Subscriber ('sensors/temp' on port 5002)
+#   [P] Test 1: Publish 1 Standard message
+#   [2] Test 2: Publish 5 Priority messages
+#   [X] Test 3: Burst 16 messages (Triggers SDN Promotion)
+#   [A] Run Automated End-to-End Demo (All tests sequentially)
+#   [U] Run Unit Test Suite (tests/test_pubsub.py with live stream)
+#   [L] Toggle Layout Mode (Stacked Full-Width <-> Split 2-Column)
+#   [C] Clear Consoles  |  [Q] Clean Exit
 
 # Option C: Automated Local Test Runner
 python3 run_local_demo.py

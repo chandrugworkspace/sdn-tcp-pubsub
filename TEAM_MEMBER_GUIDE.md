@@ -108,14 +108,21 @@ To secure full marks (40/40), the presentation is structured so each member demo
 > *Our Central Broker handles concurrent client threads and listens on two separate TCP ports: **5001 (Priority)** and **5002 (Standard)**. Every publish event requires end-to-end confirmation with a `PUB_ACK` packet containing sequence numbers and delivery counts."*
 
 #### Live Demonstration Action:
-1. Open the terminal and launch the In-Terminal GUI:
+1. Open the terminal and launch the In-Terminal TUI (configured with responsive form factor & solid black background):
    ```bash
    source .venv/bin/activate
    python3 tui.py
    ```
-2. Press **`B`** $\rightarrow$ Show the Broker initializing ports 5001 and 5002 in Pane 1.
-3. Press **`S`** $\rightarrow$ Show the Subscriber connecting to topic `sensors/temp` in Pane 2.
-4. Press **`P`** $\rightarrow$ Show the Publisher sending a packet in Pane 3, the Broker routing it, the Subscriber receiving the sensor temperature, and the Publisher confirming `Broker ACK: OK` with round-trip latency.
+2. **Interactive Manual Demo Flow:**
+   - Press **`B`** $\rightarrow$ Show the Broker initializing listeners on ports 5001 (Priority) and 5002 (Standard) in Pane 1.
+   - Press **`S`** $\rightarrow$ Show Subscriber connecting to topic `sensors/temp` in Pane 2.
+   - Press **`P`** $\rightarrow$ Show Publisher sending a packet in Pane 3, Broker routing it, Subscriber receiving it, and Publisher displaying `Broker ACK: OK` with latency.
+   - Press **`2`** $\rightarrow$ Show Priority publishing (5 packets on `alerts/fire` port 5001).
+   - Press **`X`** $\rightarrow$ Burst 16 packets on `sensors/temp` to trigger the dynamic SDN Promotion webhook ($\ge 15$ threshold).
+3. **One-Touch Automated Demo / Viva Backup:**
+   - Press **`A`** $\rightarrow$ Runs the entire End-to-End sequence automatically (Broker -> Sub -> Std -> Prio -> Burst).
+   - Press **`U`** $\rightarrow$ Runs Python unit tests (`tests/test_pubsub.py`) with live passing logs inside the console.
+   - Press **`L`** $\rightarrow$ Toggles layout between Stacked (Full-Width Rows) and Split (2-Column Grid).
 
 ---
 
