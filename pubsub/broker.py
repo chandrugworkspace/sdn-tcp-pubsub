@@ -49,6 +49,10 @@ except ImportError:
 
 
 def print_banner(host: str, prio_port: int, std_port: int, sdn_url: str):
+    if os.environ.get("TUI_MODE") == "1":
+        print(f" ● [BROKER] Priority Port: {host}:{prio_port} [FAST PATH] | Standard Port: {host}:{std_port} [STANDARD PATH]")
+        print(f" ● [SDN-POLICY] Webhook URL: {sdn_url} (Promotion threshold: >= 15 msgs)")
+        return
     print(f"\n{C_CYAN}┌─────────────────────────────────────────────────────────────────┐{C_RESET}")
     print(f"{C_CYAN}│{C_BOLD}{C_WHITE}            📡 TCP PUBLISH–SUBSCRIBE CENTRAL BROKER              {C_RESET}{C_CYAN}│{C_RESET}")
     print(f"{C_CYAN}│{C_DIM}     Course: Computer Networks (UE25CS243A) — Project #9          {C_RESET}{C_CYAN}│{C_RESET}")

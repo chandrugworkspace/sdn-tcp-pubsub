@@ -39,6 +39,9 @@ except ImportError:
 def print_banner(broker_ip: str, port: int, topics: list, csv_file: str):
     is_prio = (port == 5001)
     port_label = f"{port} [FAST PATH]" if is_prio else f"{port} [STANDARD PATH]"
+    if os.environ.get("TUI_MODE") == "1":
+        print(f" ● [SUBSCRIBER] Connected to {broker_ip}:{port_label} | Topics: {', '.join(topics)}")
+        return
     port_color = C_GREEN if is_prio else C_YELLOW
     print(f"\n{C_BLUE}┌─────────────────────────────────────────────────────────────────┐{C_RESET}")
     print(f"{C_BLUE}│{C_BOLD}{C_WHITE}                    📥 TCP PUB-SUB SUBSCRIBER                    {C_RESET}{C_BLUE}│{C_RESET}")
@@ -51,6 +54,10 @@ def print_banner(broker_ip: str, port: int, topics: list, csv_file: str):
 
 
 def print_table_header():
+    if os.environ.get("TUI_MODE") == "1":
+        print("  SEQ │ TOPIC            │ TRAFFIC CLASS   │ LATENCY   │ PAYLOAD")
+        print(" ─────┼──────────────────┼─────────────────┼───────────┼──────────────────────────────")
+        return
     print(f"{C_DIM}┌───────┬──────────────────┬─────────────────┬──────────────┬───────────────────────────────┐{C_RESET}")
     print(f"{C_BOLD}│  SEQ  │ TOPIC            │ TRAFFIC CLASS   │ LATENCY (ms) │ PAYLOAD                       │{C_RESET}")
     print(f"{C_DIM}├───────┼──────────────────┼─────────────────┼──────────────┼───────────────────────────────┤{C_RESET}")
@@ -106,28 +113,42 @@ def run_subscriber(broker_ip: str, port: int, topics: list, csv_file: str):
                 payload = msg.get("payload", "")
 
                 # Formatting helpers
-                if latency_ms < 15.0:
-                    lat_str = f"{C_GREEN}{latency_ms:6.2f} ms 🚀{C_RESET}"
-                    class_badge = f"{C_GREEN}FAST_PATH{C_RESET}"
+                if os.environ.get("TUI_MODE") == "1":
+                    if latency_ms < 15.0:
+                        lat_str = f"{C_GREEN}{latency_ms:6.2f} ms [FAST]{C_RESET}"
+                        class_badge = f"{C_GREEN}FAST_PATH{C_RESET}"
+                    else:
+                        lat_str = f"{C_YELLOW}{latency_ms:6.2f} ms [STD ]{C_RESET}"
+                        class_badge = f"{C_YELLOW}STANDARD {C_RESET}"
+                    seq_fmt = f"#{seq:<3}"
+                    top_fmt = (topic[:16] + "..") if len(topic) > 16 else f"{topic:<16}"
+                    pay_fmt = (payload[:26] + "..") if len(payload) > 26 else f"{payload:<28}"
+                    print(f"  {seq_fmt} │ {top_fmt} │ {class_badge}       │ {lat_str} │ {pay_fmt}")
                 else:
-                    lat_str = f"{C_YELLOW}{latency_ms:6.2f} ms ⚠️ {C_RESET}"
-                    class_badge = f"{C_YELLOW}STANDARD {C_RESET}"
+                    if latency_ms < 15.0:
+                        lat_str = f"{C_GREEN}{latency_ms:6.2f} ms 🚀{C_RESET}"
+                        class_badge = f"{C_GREEN}FAST_PATH{C_RESET}"
+                    else:
+                        lat_str = f"{C_YELLOW}{latency_ms:6.2f} ms ⚠️ {C_RESET}"
+                        class_badge = f"{C_YELLOW}STANDARD {C_RESET}"
 
-                seq_formatted = f"#{seq:<4}"
-                topic_truncated = (topic[:16] + "..") if len(topic) > 16 else f"{topic:<16}"
-                payload_truncated = (payload[:27] + "..") if len(payload) > 27 else f"{payload:<29}"
+                    seq_formatted = f"#{seq:<4}"
+                    topic_truncated = (topic[:16] + "..") if len(topic) > 16 else f"{topic:<16}"
+                    payload_truncated = (payload[:27] + "..") if len(payload) > 27 else f"{payload:<29}"
 
-                print(f"│ {seq_formatted} │ {topic_truncated} │ {class_badge}       │ {lat_str} │ {payload_truncated} │")
+                    print(f"│ {seq_formatted} │ {topic_truncated} │ {class_badge}       │ {lat_str} │ {payload_truncated} │")
 
                 if csv_writer:
                     csv_writer.writerow([seq, topic, t_class, f"{latency_ms:.3f}", time.time()])
                     f_out.flush()
 
     except KeyboardInterrupt:
-        print(f"\n{C_DIM}├───────┴──────────────────┴─────────────────┴──────────────┴───────────────────────────────┤{C_RESET}")
+        if os.environ.get("TUI_MODE") != "1":
+            print(f"\n{C_DIM}├───────┴──────────────────┴─────────────────┴──────────────┴───────────────────────────────┤{C_RESET}")
         print(f" {C_YELLOW}■ Disconnecting subscriber...{C_RESET}")
     finally:
-        print(f"{C_DIM}└───────────────────────────────────────────────────────────────────────────────────────────┘{C_RESET}")
+        if os.environ.get("TUI_MODE") != "1":
+            print(f"{C_DIM}└───────────────────────────────────────────────────────────────────────────────────────────┘{C_RESET}")
         if f_out:
             f_out.close()
         try:

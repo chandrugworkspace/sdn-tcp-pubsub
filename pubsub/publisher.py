@@ -37,6 +37,9 @@ except ImportError:
 def print_banner(broker_ip: str, port: int, topic: str, count: int, interval: float):
     is_prio = (port == 5001)
     port_label = f"{port} [FAST PATH]" if is_prio else f"{port} [STANDARD PATH]"
+    if os.environ.get("TUI_MODE") == "1":
+        print(f" ● [PUBLISHER] Target: {broker_ip}:{port_label} | Topic: {topic} | Plan: {count} msgs ({interval}s interval)")
+        return
     port_color = C_GREEN if is_prio else C_YELLOW
     print(f"\n{C_MAGENTA}┌─────────────────────────────────────────────────────────────────┐{C_RESET}")
     print(f"{C_MAGENTA}│{C_BOLD}{C_WHITE}                    📤 TCP PUB-SUB PUBLISHER                    {C_RESET}{C_MAGENTA}│{C_RESET}")
@@ -92,13 +95,16 @@ def run_publisher(broker_ip: str, port: int, topic: str, count: int, interval: f
             pass
 
         elapsed = time.time() - start_time
-        print(f"\n{C_CYAN}┌─────────────────────────────────────────────────────────────┐{C_RESET}")
-        print(f"{C_CYAN}│{C_BOLD}{C_WHITE}                  📊 PUBLISHING SUMMARY                      {C_RESET}{C_CYAN}│{C_RESET}")
-        print(f"{C_CYAN}├─────────────────────────────────────────────────────────────┤{C_RESET}")
-        print(f"{C_CYAN}│{C_RESET}  ● Messages Sent     : {C_BOLD}{seq} / {count}{C_RESET} completed{' ' * (30 - len(f'{seq} / {count}'))}{C_CYAN}│{C_RESET}")
-        print(f"{C_CYAN}│{C_RESET}  ● Total Deliveries  : {C_GREEN}{delivered_total} client events{C_RESET}{' ' * (27 - len(f'{delivered_total} client events'))}{C_CYAN}│{C_RESET}")
-        print(f"{C_CYAN}│{C_RESET}  ● Elapsed Time      : {elapsed:.2f} seconds{' ' * (34 - len(f'{elapsed:.2f} seconds'))}{C_CYAN}│{C_RESET}")
-        print(f"{C_CYAN}└─────────────────────────────────────────────────────────────┘{C_RESET}\n")
+        if os.environ.get("TUI_MODE") == "1":
+            print(f" ✔ [SUMMARY] Sent: {seq}/{count} msgs | Deliveries: {delivered_total} client events | Elapsed: {elapsed:.2f}s")
+        else:
+            print(f"\n{C_CYAN}┌─────────────────────────────────────────────────────────────┐{C_RESET}")
+            print(f"{C_CYAN}│{C_BOLD}{C_WHITE}                  📊 PUBLISHING SUMMARY                      {C_RESET}{C_CYAN}│{C_RESET}")
+            print(f"{C_CYAN}├─────────────────────────────────────────────────────────────┤{C_RESET}")
+            print(f"{C_CYAN}│{C_RESET}  ● Messages Sent     : {C_BOLD}{seq} / {count}{C_RESET} completed{' ' * (30 - len(f'{seq} / {count}'))}{C_CYAN}│{C_RESET}")
+            print(f"{C_CYAN}│{C_RESET}  ● Total Deliveries  : {C_GREEN}{delivered_total} client events{C_RESET}{' ' * (27 - len(f'{delivered_total} client events'))}{C_CYAN}│{C_RESET}")
+            print(f"{C_CYAN}│{C_RESET}  ● Elapsed Time      : {elapsed:.2f} seconds{' ' * (34 - len(f'{elapsed:.2f} seconds'))}{C_CYAN}│{C_RESET}")
+            print(f"{C_CYAN}└─────────────────────────────────────────────────────────────┘{C_RESET}\n")
 
 
 if __name__ == "__main__":

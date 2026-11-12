@@ -3,16 +3,17 @@
 tui.py - Terminal User Interface (TUI) for TCP Pub-Sub Messaging System
 
 A clean, responsive terminal user interface using Python's standard 'curses'
-library with a true solid black background across all visual elements and tests.
+library with a true solid black background and a single unified, perfectly
+aligned frame with zero uneven or fragmented borders.
 
 Key Features & Form Factor:
   - Deep Black Background: Every pane, border, log line, test output, and empty
-    interior space is explicitly filled with curses.COLOR_BLACK.
-  - Proper Form Factor:
-      * Stacked Layout (Default): 3 full-width horizontal panes ensuring the wide
-        78-column subscriber latency table and broker banners never truncate.
-      * Split Layout (Toggleable via [L]): 2-column view with subscriber full-height.
-      * Edge-safe bounds checking to avoid curses.error on window resizing.
+    interior space is explicitly rendered on curses.COLOR_BLACK.
+  - Unified Seamless Frame: One single continuous rectangular dashboard frame
+    with clean dividers (┌─┐, ├─┤, └─┘), completely eliminating uneven borders
+    or nested ASCII box fragments.
+  - Emojis Normalized: Double-width emojis are sanitized to single-width badges
+    to ensure perfect vertical column alignment across all terminals.
   - Comprehensive Test Suite:
       * [B] Start / Stop Central Broker (:5001 Priority, :5002 Standard)
       * [S] Start / Stop Subscriber ('sensors/temp' port 5002)
@@ -21,7 +22,6 @@ Key Features & Form Factor:
       * [X] Test 3: Burst SDN Promotion Test (16 msgs, triggers SDN webhook)
       * [A] Automated End-to-End Demo Test (Broker -> Sub -> Std -> Prio -> Burst)
       * [U] Run Unit Test Suite (tests/test_pubsub.py with live PASS/FAIL logs)
-      * [L] Toggle Layout Mode (Stacked <-> Split)
       * [C] Clear Console Buffers
       * [Q] Clean Exit & Process Cleanup
 """
@@ -45,7 +45,7 @@ PAIR_HEADER = 4     # Bold Cyan on Black
 PAIR_DEFAULT = 5    # White on Black (Base & Borders)
 PAIR_HIGHLIGHT = 6  # Magenta on Black (SDN Trigger / Burst)
 PAIR_ERROR = 7      # Red on Black (Errors / Stopped)
-PAIR_BORDER = 8     # Dim White / Blue on Black
+PAIR_BORDER = 8     # Dim White on Black
 
 
 class PubSubTUI:
@@ -53,7 +53,6 @@ class PubSubTUI:
         self.stdscr = stdscr
         self.running = True
         self.test_running = False
-        self.layout_mode = "stacked"  # "stacked" or "split"
 
         # Subprocess handles
         self.broker_proc = None
@@ -78,7 +77,6 @@ class PubSubTUI:
     def _init_colors(self):
         if curses.has_colors():
             curses.start_color()
-            # Explicitly enforce pure COLOR_BLACK for all background pairs
             curses.init_pair(PAIR_BROKER, curses.COLOR_GREEN, curses.COLOR_BLACK)
             curses.init_pair(PAIR_SUB, curses.COLOR_CYAN, curses.COLOR_BLACK)
             curses.init_pair(PAIR_PUB, curses.COLOR_YELLOW, curses.COLOR_BLACK)
@@ -87,7 +85,6 @@ class PubSubTUI:
             curses.init_pair(PAIR_HIGHLIGHT, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
             curses.init_pair(PAIR_ERROR, curses.COLOR_RED, curses.COLOR_BLACK)
             curses.init_pair(PAIR_BORDER, curses.COLOR_WHITE, curses.COLOR_BLACK)
-            # Set window background to pure black space
             self.stdscr.bkgd(" ", curses.color_pair(PAIR_DEFAULT))
 
     def run(self):
@@ -138,10 +135,6 @@ class PubSubTUI:
             self._run_auto_demo()
         elif ch in (ord("u"), ord("U")):
             self._run_unit_tests()
-        elif ch in (ord("l"), ord("L")):
-            self.layout_mode = "split" if self.layout_mode == "stacked" else "stacked"
-            self.stdscr.clear()
-            self.status_msg = f"Switched layout to: {self.layout_mode.upper()} mode."
         elif ch in (ord("c"), ord("C")):
             self.broker_logs.clear()
             self.sub_logs.clear()
@@ -171,6 +164,7 @@ class PubSubTUI:
             ]
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
+            env["TUI_MODE"] = "1"
             try:
                 self.broker_proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, env=env
@@ -211,6 +205,7 @@ class PubSubTUI:
             ]
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
+            env["TUI_MODE"] = "1"
             try:
                 self.sub_proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, env=env
@@ -255,6 +250,7 @@ class PubSubTUI:
             ]
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
+            env["TUI_MODE"] = "1"
             try:
                 proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, env=env
@@ -286,6 +282,7 @@ class PubSubTUI:
         ]
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
+        env["TUI_MODE"] = "1"
         try:
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, env=env
@@ -360,7 +357,7 @@ class PubSubTUI:
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=BASE_DIR
                 )
                 for line in proc.stdout:
-                    clean = self._strip_ansi(line).rstrip("\r\n")
+                    clean = self._sanitize_line(line)
                     if clean:
                         self.pub_logs.append(clean)
                 proc.wait()
@@ -388,8 +385,8 @@ class PubSubTUI:
         while not self.log_queue.empty():
             try:
                 tag, line = self.log_queue.get_nowait()
-                clean_line = self._strip_ansi(line).rstrip("\r\n")
-                if not clean_line.strip():
+                clean_line = self._sanitize_line(line)
+                if not clean_line:
                     continue
 
                 if tag == "broker":
@@ -407,13 +404,44 @@ class PubSubTUI:
             except queue.Empty:
                 break
 
-    def _strip_ansi(self, s: str) -> str:
-        return re.sub(r"\x1b\[[0-9;]*[mK]", "", s)
+    def _sanitize_line(self, line: str) -> str:
+        """Strips ANSI codes, suppresses nested decorative ASCII banners, and normalizes wide emojis."""
+        clean = re.sub(r"\x1b\[[0-9;]*[mK]", "", line).rstrip("\r\n")
+        if not clean.strip():
+            return ""
+
+        # Filter out standalone decorative box borders from subprocesses
+        if clean.startswith(("┌", "├", "└", "╔", "╠", "╚")) and any(c in clean for c in ("─", "═", "┬", "┴")):
+            return ""
+        if clean.endswith(("┐", "┤", "┘", "╗", "╣", "╝")) and any(c in clean for c in ("─", "═", "┬", "┴")):
+            return ""
+
+        # Filter out banner box text fragments that leak into TUI
+        u = clean.upper()
+        if any(k in u for k in ("TCP PUBLISH–SUBSCRIBE CENTRAL BROKER", "TCP PUB-SUB SUBSCRIBER", "PUBLISHING SUMMARY")):
+            return ""
+        if any(k in u for k in ("COURSE: COMPUTER NETWORKS", "BROKER TARGET :", "PUBLISH PLAN  :", "MESSAGES SENT     :", "TOTAL DELIVERIES  :", "ELAPSED TIME      :")):
+            return ""
+
+        # Normalize emojis to single-width tags to prevent column drift and uneven borders
+        clean = clean.replace("🚀", "[FAST]")
+        clean = clean.replace("⚠️", "[STD]")
+        clean = clean.replace("📊", "[STATS]")
+        clean = clean.replace("📡", "[BROKER]")
+        clean = clean.replace("📥", "[SUB]")
+        clean = clean.replace("📤", "[PUB]")
+        clean = clean.replace("⚡", "[SDN]")
+
+        # Clean trailing box characters if any
+        if clean.endswith("│") and not "│" in clean[:5]:
+            clean = clean[:-1].rstrip()
+
+        return clean
 
     def _classify_line(self, line: str, default_pair: int):
         """Categorizes log lines to assign syntax highlighting colors against black background."""
         u = line.upper()
-        if any(k in u for k in ("BURST-DETECTED", "SDN-HOOK", "FAST_PATH", "FAST PATH", "PROMOTION")):
+        if any(k in u for k in ("BURST-DETECTED", "SDN-HOOK", "FAST_PATH", "FAST PATH", "PROMOTION", "[FAST]")):
             return curses.color_pair(PAIR_HIGHLIGHT), curses.A_BOLD
         if any(k in u for k in ("ERROR", "FAIL", "EXCEPTION", "DISCONNECT", "CLOSED CONNECTION", "TERMINATED")):
             return curses.color_pair(PAIR_ERROR), curses.A_BOLD
@@ -421,43 +449,14 @@ class PubSubTUI:
             return curses.color_pair(PAIR_BROKER), curses.A_BOLD
         if any(k in u for k in ("PUBLISH", "SEQ", "SENSORS/TEMP", "ALERTS/FIRE")):
             return curses.color_pair(PAIR_SUB), 0
-        if any(k in u for k in ("STANDARD", "IDLE", "WARNING", "⚠")):
+        if any(k in u for k in ("STANDARD", "IDLE", "WARNING", "[STD]")):
             return curses.color_pair(PAIR_PUB), 0
         if any(k in line for k in ("┌", "├", "└", "│", "─", "╔", "╠", "╚", "║", "═")):
             return curses.color_pair(PAIR_BORDER), 0
         return curses.color_pair(default_pair), 0
 
-    def _format_log_line(self, line: str, max_w: int) -> str:
-        """Dynamically reformats wide subscriber table rows for narrower terminal form factors."""
-        if len(line) <= max_w:
-            return line
-
-        # If it's a wide 5-column subscriber latency table row
-        if line.startswith("│ #") and "│" in line[2:]:
-            parts = [p.strip() for p in line.split("│") if p.strip()]
-            if len(parts) >= 4:
-                seq = parts[0]
-                topic = parts[1]
-                t_class = parts[2]
-                lat = parts[3]
-                payload = parts[4] if len(parts) > 4 else ""
-
-                # Compact format: Fits in ~55-70 characters without losing latency or payload
-                compact = f"{seq} │ {topic} │ {t_class} │ {lat} │ {payload}".rstrip()
-                if len(compact) <= max_w:
-                    return compact
-                # Extreme narrow format:
-                ultra = f"{seq} │ {topic[:12]} │ {t_class[:8]} │ {lat} │ {payload[:20]}".rstrip()
-                return ultra[:max_w]
-
-        # Truncate wide decorative borders cleanly
-        if line.startswith(("┌", "├", "└", "╔", "╠", "╚", "─", "═")):
-            return line[:max_w]
-
-        return line[:max_w]
-
     # -------------------------------------------------------------------------
-    # Layout & Rendering Engine
+    # Layout & Rendering Engine (Single Unified Seamless Frame)
     # -------------------------------------------------------------------------
 
     def _draw(self):
@@ -471,22 +470,18 @@ class PubSubTUI:
             self.stdscr.refresh()
             return
 
+        w = max_x
+
         # 1. Top Title Bar (Solid Black background, Bold Cyan / White text)
         title_left = " 📡 SDN-INTEGRATED TCP PUB-SUB MESSAGING SYSTEM "
         title_mid = "Course: UE25CS243A (Project #9)"
-        layout_badge = f" [Layout: {self.layout_mode.upper()} (L)] "
-
-        # Clear line 0 with black background
-        self._safe_addstr(0, 0, " " * (max_x - 1), curses.color_pair(PAIR_DEFAULT))
+        self._safe_addstr(0, 0, " " * (w - 1), curses.color_pair(PAIR_DEFAULT))
         self._safe_addstr(0, 0, title_left, curses.color_pair(PAIR_HEADER) | curses.A_BOLD)
-        mid_x = max(len(title_left) + 2, (max_x - len(title_mid)) // 2)
-        if mid_x + len(title_mid) < max_x - len(layout_badge) - 2:
+        mid_x = max(len(title_left) + 2, (w - len(title_mid)) // 2)
+        if mid_x + len(title_mid) < w - 2:
             self._safe_addstr(0, mid_x, title_mid, curses.color_pair(PAIR_DEFAULT) | curses.A_DIM)
-        badge_x = max_x - len(layout_badge) - 1
-        if badge_x > mid_x + len(title_mid) + 2:
-            self._safe_addstr(0, badge_x, layout_badge, curses.color_pair(PAIR_PUB) | curses.A_BOLD)
 
-        # 2. Status Badges for Panes
+        # 2. Live Status Badges
         b_badge = "● RUNNING (:5001, :5002)" if self.broker_proc else "■ STOPPED"
         b_pair = curses.color_pair(PAIR_BROKER) if self.broker_proc else curses.color_pair(PAIR_ERROR)
 
@@ -499,50 +494,40 @@ class PubSubTUI:
             p_badge = "⚡ TEST RUNNING"
             p_pair = curses.color_pair(PAIR_HIGHLIGHT)
 
-        # 3. Form Factor Layout Calculation
-        usable_h = max_y - 3  # rows available between title (y=0) and controls (y=max_y-2)
+        # 3. Dynamic Row Allocation for Unified Frame
+        # Total frame spans from y=1 to y=max_y-3
+        # Border rows: y=1 (top), y_div1 (mid1), y_div2 (mid2), y_bot (bottom) -> 4 border rows
+        content_total = max(3, (max_y - 3) - 4)
+        h_broker = max(2, int(content_total * 0.28))
+        h_sub = max(3, int(content_total * 0.44))
+        h_pub = content_total - h_broker - h_sub
+        if h_pub < 2:
+            h_pub = 2
+            h_sub = max(2, content_total - h_broker - h_pub)
 
-        if self.layout_mode == "stacked":
-            # Stacked Layout: 3 balanced full-width horizontal panes
-            h_broker = max(5, int(usable_h * 0.28))
-            h_sub = max(6, int(usable_h * 0.40))
-            h_pub = usable_h - h_broker - h_sub
-            if h_pub < 5:
-                diff = 5 - h_pub
-                h_pub = 5
-                h_sub = max(5, h_sub - diff)
+        y_top = 1
+        y_div1 = y_top + 1 + h_broker
+        y_div2 = y_div1 + 1 + h_sub
+        y_bot = max_y - 3
 
-            w = max_x - 1
+        # 4. Render Unified Outer & Divider Borders (Mathematically 100% Even)
+        self._draw_divider_line(y_top, "┌", "1. Central Broker Console", b_badge, b_pair, "┐", w)
+        self._draw_content_rows(y_top + 1, h_broker, self.broker_logs, PAIR_BROKER, w)
 
-            # Pane 1: Broker (Top)
-            self._draw_box(1, 0, h_broker, w, "1. Central Broker Console", b_badge, b_pair, self.broker_logs, PAIR_BROKER)
+        self._draw_divider_line(y_div1, "├", "2. Subscriber Console", s_badge, s_pair, "┤", w)
+        self._draw_content_rows(y_div1 + 1, h_sub, self.sub_logs, PAIR_SUB, w)
 
-            # Pane 2: Subscriber (Middle - Wide space for complete 78-col latency table)
-            self._draw_box(1 + h_broker, 0, h_sub, w, "2. Subscriber Console", s_badge, s_pair, self.sub_logs, PAIR_SUB)
+        self._draw_divider_line(y_div2, "├", "3. Publisher & Test Console", p_badge, p_pair, "┤", w)
+        self._draw_content_rows(y_div2 + 1, h_pub, self.pub_logs, PAIR_PUB, w)
 
-            # Pane 3: Publisher & Test Suite (Bottom)
-            self._draw_box(1 + h_broker + h_sub, 0, h_pub, w, "3. Publisher & Test Console", p_badge, p_pair, self.pub_logs, PAIR_PUB)
+        # Bottom Border of the Unified Frame
+        bottom_str = "└" + ("─" * (w - 2)) + "┘"
+        self._safe_addstr(y_bot, 0, bottom_str, curses.color_pair(PAIR_BORDER))
 
-        else:
-            # Split Layout: 2-column view (Broker & Pub on Left, Subscriber Full-Height on Right)
-            w_sub = min(max_x // 2, 85)
-            w_left = max_x - w_sub - 1
-            h_top = usable_h // 2
-            h_bot = usable_h - h_top
-
-            # Top Left: Broker
-            self._draw_box(1, 0, h_top, w_left, "1. Central Broker", b_badge, b_pair, self.broker_logs, PAIR_BROKER)
-
-            # Bottom Left: Publisher / Tests
-            self._draw_box(1 + h_top, 0, h_bot, w_left, "3. Publisher / Tests", p_badge, p_pair, self.pub_logs, PAIR_PUB)
-
-            # Right Column: Subscriber (Full Height)
-            self._draw_box(1, w_left, usable_h, w_sub, "2. Subscriber Console", s_badge, s_pair, self.sub_logs, PAIR_SUB)
-
-        # 4. Bottom Controls Bar (Black background, Bold Yellow shortcuts)
+        # 5. Bottom Controls Bar
         ctrl_y = max_y - 2
-        self._safe_addstr(ctrl_y, 0, " " * (max_x - 1), curses.color_pair(PAIR_DEFAULT))
-        if max_x >= 115:
+        self._safe_addstr(ctrl_y, 0, " " * (w - 1), curses.color_pair(PAIR_DEFAULT))
+        if w >= 105:
             ctrls = [
                 ("[B]", "Broker "),
                 ("[S]", "Sub "),
@@ -551,7 +536,6 @@ class PubSubTUI:
                 ("[X]", "Burst-16 "),
                 ("[A]", "Auto-Demo "),
                 ("[U]", "Unit-Tests "),
-                ("[L]", "Layout "),
                 ("[C]", "Clear "),
                 ("[Q]", "Quit "),
             ]
@@ -564,7 +548,6 @@ class PubSubTUI:
                 ("[X]", "Burst "),
                 ("[A]", "Auto "),
                 ("[U]", "Test "),
-                ("[L]", "View "),
                 ("[C]", "Clr "),
                 ("[Q]", "Quit"),
             ]
@@ -576,86 +559,66 @@ class PubSubTUI:
             self._safe_addstr(ctrl_y, x_pos, desc, curses.color_pair(PAIR_DEFAULT))
             x_pos += len(desc)
 
-        # 5. Status / Notification Line
+        # 6. Status / Notification Line
         stat_y = max_y - 1
-        self._safe_addstr(stat_y, 0, " " * (max_x - 1), curses.color_pair(PAIR_DEFAULT))
+        self._safe_addstr(stat_y, 0, " " * (w - 1), curses.color_pair(PAIR_DEFAULT))
         status_text = f" Status: {self.status_msg}"
-        self._safe_addstr(stat_y, 0, status_text[:max_x - 2], curses.color_pair(PAIR_SUB))
+        self._safe_addstr(stat_y, 0, status_text[:w - 2], curses.color_pair(PAIR_SUB))
 
         self.stdscr.refresh()
 
-    def _draw_box(
-        self,
-        start_y: int,
-        start_x: int,
-        height: int,
-        width: int,
-        title: str,
-        badge_text: str,
-        badge_color: int,
-        logs: list,
-        default_pair: int,
+    def _draw_divider_line(
+        self, y: int, left_char: str, title: str, badge_text: str, badge_color: int, right_char: str, width: int
     ):
-        """Draws a clean box with top title, live status badge, and fills every row with pure black background."""
-        if height <= 2 or width <= 4:
-            return
+        """Draws an edge-to-edge border or divider line with title and live status badge."""
+        prefix = f"{left_char}─ {title} "
+        badge_str = f"[{badge_text}] " if badge_text else ""
+        suffix = f" {badge_str}─{right_char}" if badge_str else f"─{right_char}"
 
-        content_h = height - 2
-        content_w = width - 4
-
-        # 1. Top border with Title and Badge
-        title_str = f" {title} "
-        badge_str = f" {badge_text} " if badge_text else ""
-        right_x = start_x + width - 1
-
-        self._safe_addstr(start_y, start_x, "┌", curses.color_pair(PAIR_BORDER))
-        cur_x = start_x + 1
-
-        self._safe_addstr(start_y, cur_x, "─", curses.color_pair(PAIR_BORDER))
-        cur_x += 1
-        self._safe_addstr(start_y, cur_x, title_str, curses.color_pair(PAIR_DEFAULT) | curses.A_BOLD)
-        cur_x += len(title_str)
-
-        badge_start_x = right_x - len(badge_str) - 2
-        if badge_str and badge_start_x > cur_x + 2:
-            fill_len = badge_start_x - cur_x
-            self._safe_addstr(start_y, cur_x, "─" * fill_len, curses.color_pair(PAIR_BORDER))
-            cur_x += fill_len
-            self._safe_addstr(start_y, cur_x, badge_str, badge_color | curses.A_BOLD)
-            cur_x += len(badge_str)
-            rem = right_x - cur_x
-            if rem > 0:
-                self._safe_addstr(start_y, cur_x, "─" * rem, curses.color_pair(PAIR_BORDER))
+        needed_fill = width - len(prefix) - len(suffix)
+        if needed_fill >= 0:
+            border_str = prefix + ("─" * needed_fill) + suffix
         else:
-            rem = right_x - cur_x
-            if rem > 0:
-                self._safe_addstr(start_y, cur_x, "─" * rem, curses.color_pair(PAIR_BORDER))
+            # Narrow screen: truncate title so badge and border fit perfectly
+            avail_title = max(1, width - len(suffix) - 5)
+            prefix = f"{left_char}─ {title[:avail_title]} "
+            needed_fill = max(0, width - len(prefix) - len(suffix))
+            border_str = prefix + ("─" * needed_fill) + suffix
 
-        self._safe_addstr(start_y, right_x, "┐", curses.color_pair(PAIR_BORDER))
+        # Print prefix and border line
+        self._safe_addstr(y, 0, border_str, curses.color_pair(PAIR_BORDER))
+        # Highlight title in bold white
+        title_start = 2
+        self._safe_addstr(y, title_start, f" {title[:avail_title if needed_fill < 0 else len(title)]} ", curses.color_pair(PAIR_DEFAULT) | curses.A_BOLD)
 
-        # 2. Content rows: Padded with spaces on pure black background
-        visible_logs = logs[-content_h:]
-        for r in range(content_h):
-            y = start_y + 1 + r
-            self._safe_addstr(y, start_x, "│ ", curses.color_pair(PAIR_BORDER))
+        # Highlight badge with its color
+        if badge_text:
+            badge_pos = border_str.rfind(badge_str)
+            if badge_pos != -1:
+                self._safe_addstr(y, badge_pos, badge_str, badge_color | curses.A_BOLD)
 
-            log_idx = r - (content_h - len(visible_logs))
+    def _draw_content_rows(self, start_y: int, count: int, logs: list, default_pair: int, width: int):
+        """Fills every content row inside a pane with exact borders and spaces on solid black background."""
+        content_w = width - 4
+        visible_logs = logs[-count:]
+
+        for r in range(count):
+            y = start_y + r
+            # Left border at column 0
+            self._safe_addstr(y, 0, "│ ", curses.color_pair(PAIR_BORDER))
+
+            log_idx = r - (count - len(visible_logs))
             if log_idx >= 0:
                 raw_line = visible_logs[log_idx]
                 color, attr = self._classify_line(raw_line, default_pair)
-                formatted = self._format_log_line(raw_line, content_w)
-                line_str = formatted[:content_w].ljust(content_w)
-                self._safe_addstr(y, start_x + 2, line_str, color | attr)
+                line_str = raw_line[:content_w].ljust(content_w)
+                self._safe_addstr(y, 2, line_str, color | attr)
             else:
                 # Fill empty row with spaces on black background
-                self._safe_addstr(y, start_x + 2, " " * content_w, curses.color_pair(PAIR_DEFAULT))
+                self._safe_addstr(y, 2, " " * content_w, curses.color_pair(PAIR_DEFAULT))
 
-            self._safe_addstr(y, start_x + width - 2, " │", curses.color_pair(PAIR_BORDER))
-
-        # 3. Bottom border
-        self._safe_addstr(
-            start_y + height - 1, start_x, "└" + "─" * (width - 2) + "┘", curses.color_pair(PAIR_BORDER)
-        )
+            # Right border at column width - 1
+            self._safe_addstr(y, width - 2, " │", curses.color_pair(PAIR_BORDER))
 
     def _cleanup(self):
         self.running = False
