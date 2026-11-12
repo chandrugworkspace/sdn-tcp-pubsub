@@ -11,6 +11,16 @@
 
 This project implements an end-to-end, dynamic publish–subscribe messaging infrastructure combining low-level **TCP socket programming** with **Software-Defined Networking (SDN)** flow steering.
 
+<p align="center">
+  <a href="docs/openflow_topology_diagram.png">
+    <img src="docs/openflow_topology_diagram.png" alt="OpenFlow Network Topology Diagram" width="100%">
+  </a>
+  <br>
+  <em>Figure 1: SDN-Integrated Publish–Subscribe Architecture & OpenFlow 1.3 Diamond Topology</em>
+</p>
+
+### OpenFlow 1.3 Multi-Path Topology
+
 ```
        +-------------------------------------------------------+
        |             OS-Ken OpenFlow 1.3 Controller            |
@@ -57,6 +67,8 @@ sdn-tcp-pubsub/
 │   └── sdn_controller.py       # Member 2: OS-Ken OpenFlow 1.3 Controller + REST Webhook API
 ├── topology/
 │   └── pubsub_topo.py          # Member 2: 4-Switch Diamond Multi-Path Mininet Topology
+├── docs/
+│   └── openflow_topology_diagram.png # OpenFlow 1.3 Network Architecture & Topology Diagram
 ├── gui.py                      # Minimal Tkinter Desktop GUI (side-by-side terminal panes)
 ├── tui.py                      # Minimal in-terminal GUI (Curses split-screen)
 ├── run_local_demo.py           # Single-command automated demo runner
