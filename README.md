@@ -86,12 +86,16 @@ sdn-tcp-pubsub/
 │       └── prio_latency.csv
 ├── tests/
 │   └── test_pubsub.py          # Automated test suite for protocol, broker & triggers
+├── SDN_TCP_PubSub_Presentation.pptx # 16:9 Widescreen Presentation Slides (12 Slides)
+├── SDN_TCP_PubSub_Presentation.pdf  # Ready-to-present PDF Slide Deck
+├── generate_presentation.py    # Automated PowerPoint slide generation script
 ├── requirements.txt            # Python dependencies (os-ken, requests, matplotlib)
 ├── TEAM_MEMBER_GUIDE.md        # Step-by-step execution guide for each member & OS
 ├── SDN_TCP_PubSub_Teammate_Handbook.pdf # PDF handbook for teammates & viva prep
 └── README.md                   # Complete documentation, setup, and viva guide
 ```
 
+> 📊 **Presentation Slides Available:** Download [SDN_TCP_PubSub_Presentation.pptx](SDN_TCP_PubSub_Presentation.pptx) or [SDN_TCP_PubSub_Presentation.pdf](SDN_TCP_PubSub_Presentation.pdf) for the complete 12-slide teacher evaluation deck.  
 > 📄 **PDF Handbook Available:** Download or share [SDN_TCP_PubSub_Teammate_Handbook.pdf](SDN_TCP_PubSub_Teammate_Handbook.pdf) with your teammates for a quick summary of roles, setup, step-by-step commands, and viva Q&A.  
 > 📖 **Role-Specific Steps:** See [TEAM_MEMBER_GUIDE.md](TEAM_MEMBER_GUIDE.md) for individual Member 1, 2, and 3 commands across Arch Linux, Ubuntu VMs, and macOS.
 
