@@ -68,7 +68,8 @@ sdn-tcp-pubsub/
 ├── topology/
 │   └── pubsub_topo.py          # Member 2: 4-Switch Diamond Multi-Path Mininet Topology
 ├── docs/
-│   └── openflow_topology_diagram.png # OpenFlow 1.3 Network Architecture & Topology Diagram
+│   ├── openflow_topology_diagram.png # OpenFlow 1.3 Network Architecture & Topology Diagram
+│   └── latency_comparison_plot.png   # Empirical Latency Benchmark Plot (50 msgs / scenario)
 ├── gui.py                      # Minimal Tkinter Desktop GUI (side-by-side terminal panes)
 ├── tui.py                      # Responsive In-Terminal TUI (Curses with true black background & test runners)
 ├── run_local_demo.py           # Single-command automated demo runner
@@ -84,7 +85,8 @@ sdn-tcp-pubsub/
 │       └── prio_latency.csv
 ├── tests/
 │   └── test_pubsub.py          # Automated test suite for protocol, broker & triggers
-├── SDN_TCP_PubSub_Project_Report.pdf # Formal Laboratory Project Report & Architectural Evaluation
+├── PROJECT_REPORT.md           # Comprehensive Academic Project Report (Online Markdown)
+├── SDN_TCP_PubSub_Project_Report.pdf # Formal Laboratory Project Report (Publication-Grade 8-Page PDF)
 ├── generate_report.py          # Script generating publication-grade Project Report PDF
 ├── SDN_TCP_PubSub_Presentation.pptx # 16:9 Widescreen Presentation Slides (12 Slides)
 ├── SDN_TCP_PubSub_Presentation.pdf  # Ready-to-present PDF Slide Deck
@@ -93,7 +95,7 @@ sdn-tcp-pubsub/
 └── README.md                   # Complete documentation, setup, and evaluation guide
 ```
 
-> 📄 **Project Report Included:** Read or download the official [SDN_TCP_PubSub_Project_Report.pdf](SDN_TCP_PubSub_Project_Report.pdf) documenting the complete architecture, dynamic SDN evaluation, and rubric mapping.  
+> 📄 **Project Report Included:** Read the complete report online at [PROJECT_REPORT.md](PROJECT_REPORT.md) or download the formal PDF [SDN_TCP_PubSub_Project_Report.pdf](SDN_TCP_PubSub_Project_Report.pdf) documenting the full architecture, dynamic SDN evaluation, and 40-mark rubric mapping.  
 > 📊 **Evaluation Slides Available:** Download [SDN_TCP_PubSub_Presentation.pptx](SDN_TCP_PubSub_Presentation.pptx) or [SDN_TCP_PubSub_Presentation.pdf](SDN_TCP_PubSub_Presentation.pdf) for the 12-slide project evaluation presentation deck.
 
 ---
