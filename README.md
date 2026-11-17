@@ -68,9 +68,7 @@ sdn-tcp-pubsub/
 ├── topology/
 │   └── pubsub_topo.py          # Member 2: 4-Switch Diamond Multi-Path Mininet Topology
 ├── docs/
-│   ├── openflow_topology_diagram.png # OpenFlow 1.3 Network Architecture & Topology Diagram
-│   ├── SDN_TCP_PubSub_Complete_Guide.md # Comprehensive course & architecture guide
-│   └── Teammates_Project_Overview.md # 3-member execution & testing summary
+│   └── openflow_topology_diagram.png # OpenFlow 1.3 Network Architecture & Topology Diagram
 ├── gui.py                      # Minimal Tkinter Desktop GUI (side-by-side terminal panes)
 ├── tui.py                      # Responsive In-Terminal TUI (Curses with true black background & test runners)
 ├── run_local_demo.py           # Single-command automated demo runner
@@ -86,18 +84,17 @@ sdn-tcp-pubsub/
 │       └── prio_latency.csv
 ├── tests/
 │   └── test_pubsub.py          # Automated test suite for protocol, broker & triggers
+├── SDN_TCP_PubSub_Project_Report.pdf # Formal Laboratory Project Report & Architectural Evaluation
+├── generate_report.py          # Script generating publication-grade Project Report PDF
 ├── SDN_TCP_PubSub_Presentation.pptx # 16:9 Widescreen Presentation Slides (12 Slides)
 ├── SDN_TCP_PubSub_Presentation.pdf  # Ready-to-present PDF Slide Deck
 ├── generate_presentation.py    # Automated PowerPoint slide generation script
 ├── requirements.txt            # Python dependencies (os-ken, requests, matplotlib)
-├── TEAM_MEMBER_GUIDE.md        # Step-by-step execution guide for each member & OS
-├── SDN_TCP_PubSub_Teammate_Handbook.pdf # PDF handbook for teammates & viva prep
-└── README.md                   # Complete documentation, setup, and viva guide
+└── README.md                   # Complete documentation, setup, and evaluation guide
 ```
 
-> 📊 **Presentation Slides Available:** Download [SDN_TCP_PubSub_Presentation.pptx](SDN_TCP_PubSub_Presentation.pptx) or [SDN_TCP_PubSub_Presentation.pdf](SDN_TCP_PubSub_Presentation.pdf) for the complete 12-slide teacher evaluation deck.  
-> 📄 **PDF Handbook Available:** Download or share [SDN_TCP_PubSub_Teammate_Handbook.pdf](SDN_TCP_PubSub_Teammate_Handbook.pdf) with your teammates for a quick summary of roles, setup, step-by-step commands, and viva Q&A.  
-> 📖 **Role-Specific Steps:** See [TEAM_MEMBER_GUIDE.md](TEAM_MEMBER_GUIDE.md) for individual Member 1, 2, and 3 commands across Arch Linux, Ubuntu VMs, and macOS.
+> 📄 **Project Report Included:** Read or download the official [SDN_TCP_PubSub_Project_Report.pdf](SDN_TCP_PubSub_Project_Report.pdf) documenting the complete architecture, dynamic SDN evaluation, and rubric mapping.  
+> 📊 **Evaluation Slides Available:** Download [SDN_TCP_PubSub_Presentation.pptx](SDN_TCP_PubSub_Presentation.pptx) or [SDN_TCP_PubSub_Presentation.pdf](SDN_TCP_PubSub_Presentation.pdf) for the 12-slide project evaluation presentation deck.
 
 ---
 
@@ -113,8 +110,6 @@ sdn-tcp-pubsub/
 1. **[0:00 - 2:00] Member 1:** Explains TCP framing challenges (`!I` header), multi-port Broker architecture, and launches `python3 tui.py` to demonstrate live publishing, routing, and `PUB_ACK`.
 2. **[2:00 - 4:30] Member 2:** Explains the 4-switch Diamond topology, directed ARP loop prevention, and proactive OpenFlow 1.3 flow steering rules (`tcp_dst=5001` vs `5002`).
 3. **[4:30 - 7:00] Member 3:** Demonstrates dynamic SDN burst promotion (>15 msgs), simulates link failure & sub-second failover (`link s1 s2 down`), and presents the empirical latency comparison plot (55ms vs 6ms).
-
-> 📖 **Comprehensive Script & Viva Defense:** Full word-for-word speech scripts and individual viva answers are documented in [TEAM_MEMBER_GUIDE.md](TEAM_MEMBER_GUIDE.md).
 
 ---
 
