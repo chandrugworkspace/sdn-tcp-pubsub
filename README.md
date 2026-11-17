@@ -104,7 +104,7 @@ sdn-tcp-pubsub/
 | :--- | :--- | :--- | :--- |
 | **Member 1** | **TCP Socket & Pub–Sub Engine Lead** | `pubsub/protocol.py`<br>`pubsub/broker.py`<br>`pubsub/publisher.py`<br>`pubsub/subscriber.py`<br>`tui.py` | • TCP/UDP Socket Implementation (4M)<br>• Complete Application Functionality (4M)<br>• Wire Protocol & Framing |
 | **Member 2** | **Mininet Topology & SDN Controller Lead** | `topology/pubsub_topo.py`<br>`controller/sdn_controller.py` | • Mininet + SDN Implementation (4M)<br>• Dynamic SDN Functionality (6M)<br>• Directed Loop-Free ARP |
-| **Member 3** | **Integration, Testing & Evaluation Lead** | `benchmarks/plot_metrics.py`<br>`README.md`<br>Webhook logic in `broker.py` & `sdn_controller.py` | • Problem Understanding & Architecture (2M)<br>• Socket–SDN Integration (3M)<br>• Initial Testing & Demo (2M)<br>• Challenging Scenario / Robustness (4M)<br>• Performance Evaluation (5M)<br>• Documentation & Viva (6M) |
+| **Member 3** | **Integration, Testing & Evaluation Lead** | `benchmarks/plot_metrics.py`<br>`README.md`<br>Webhook logic in `broker.py` & `sdn_controller.py` | • Problem Understanding & Architecture (2M)<br>• Socket–SDN Integration (3M)<br>• Initial Testing & Demo (2M)<br>• Challenging Scenario / Robustness (4M)<br>• Performance Evaluation (5M)<br>• Documentation & Final Evaluation (6M) |
 
 ### 7-Minute Teacher Presentation Flow
 1. **[0:00 - 2:00] Member 1:** Explains TCP framing challenges (`!I` header), multi-port Broker architecture, and launches `python3 tui.py` to demonstrate live publishing, routing, and `PUB_ACK`.
@@ -264,22 +264,14 @@ python3 benchmarks/plot_metrics.py benchmarks/sample_data/std_latency.csv benchm
 
 ---
 
-## 6. Viva Preparation & Answers
+## 6. Technical Design Decisions & Key Takeaways
 
-### Questions for Member 1 (Socket Lead)
-- **Q: Why use a 4-byte length prefix instead of delimiting by newlines (`\n`) or calling `sock.recv(1024)`?**  
-  *Answer:* TCP is an unstructured byte-stream protocol. A single `recv()` call can return partial JSON or multiple aggregated messages. The 4-byte integer header (`struct.pack("!I", len)`) allows the receiver to know the exact byte boundary and buffer until the complete frame arrives.
-- **Q: How does the Broker handle concurrent subscribers safely?**  
-  *Answer:* Mutations to the `self.subscriptions` dictionary are synchronized with `threading.Lock()`. During broadcast, it takes a snapshot copy `list(self.subscriptions[topic])` so iteration is unaffected by concurrent joins or drops.
+### Low-Level Framing & Concurrency Design
+- **Length-Prefixed Framing Protocol:** Unlike newline delimiters which require continuous byte scanning and character escaping, the 4-byte unsigned big-endian length prefix (`!I`) eliminates framing ambiguity, buffer under-runs, and fragmentation across stream boundaries.
+- **Thread-Safe Broker Architecture:** State transitions and subscription mutations are protected via `threading.Lock()`. Message fanout operates on isolated immutable snapshots, ensuring safe concurrent execution across multiple publisher and subscriber nodes.
 
-### Questions for Member 2 (SDN Lead)
-- **Q: Why can't a basic learning switch (like `simple_switch_13`) work on this topology?**  
-  *Answer:* The diamond topology forms a physical Layer-2 loop (`s1-s2-s4-s3-s1`). Standard broadcast flooding causes an infinite ARP broadcast storm. Our controller uses directed, loop-free ARP handling and installs explicit point-to-point OpenFlow 1.3 rules.
-- **Q: How does the switch differentiate topic priority at wire speed?**  
-  *Answer:* OpenFlow matches on Layer-4 destination TCP ports (`tcp_dst=5001` vs `tcp_dst=5002`) in `OFPMatch`. Packets are steered into their respective output ports directly in switch hardware/kernel space.
-
-### Questions for Member 3 (Integration & Benchmarks Lead)
-- **Q: How does the application dynamically trigger SDN changes?**  
-  *Answer:* The Broker tracks per-topic message volume. Upon crossing the burst threshold ($\ge 15$), it issues an HTTP `POST` to the SDN Controller's REST API (`/sdn/policy`). The controller then installs higher-priority OpenFlow rules (`priority=50`) overriding default path rules (`priority=30`).
-- **Q: What quantitative latency improvement is observed?**  
-  *Answer:* End-to-end delivery latency drops from $\sim 55\text{–}60\text{ ms}$ on the standard 5 Mbps / 25ms path (`s3`) down to $\sim 6\text{–}10\text{ ms}$ once promoted to the 20 Mbps / 2ms fast path (`s2`).
+### SDN Control Plane & Dynamic Routing
+- **Loop-Free Directed ARP:** Standard learning switches produce infinite broadcast storms on cyclic diamond topologies. The custom OS-Ken controller intercepts ARP requests and dispatches targeted point-to-point entries without flood storms.
+- **Wire-Speed Classification:** Topic QoS classification occurs at Layer 4 in the OpenFlow match pipeline (`tcp_dst=5001` vs `5002`), eliminating computational overhead from payload inspection.
+- **Dynamic Application Trigger:** When topic volume crosses burst thresholds ($\ge 15$ messages), the Broker triggers an asynchronous REST webhook (`POST /sdn/policy`) to elevate traffic to the Fast Path.
+- **Sub-Second Failover:** Port status monitoring (`OFPPS_LINK_DOWN`) enables automated route failover within milliseconds, preventing TCP connection drops.

@@ -256,7 +256,7 @@ def build_pdf(filename: str):
             Paragraph("<b>Module 3</b>", body_style),
             Paragraph("<b>Integration, Testing & Benchmarking</b>", body_style),
             Paragraph("<code>benchmarks/plot_metrics.py</code><br/><code>run_local_demo.py</code><br/>Webhook Integration logic<br/><code>README.md</code>", code_style),
-            Paragraph("• Problem Understanding & Architecture (2M)<br/>• Socket–SDN REST Webhook Integration (3M)<br/>• Link Failover & Robustness Scenario (4M)<br/>• Performance Evaluation & Latency Plot (5M)<br/>• Documentation & Viva (6M)", body_style)
+            Paragraph("• Problem Understanding & Architecture (2M)<br/>• Socket–SDN REST Webhook Integration (3M)<br/>• Link Failover & Robustness Scenario (4M)<br/>• Performance Evaluation & Latency Plot (5M)<br/>• Documentation & Final Evaluation (6M)", body_style)
         ]
     ]
     t_roles = Table(roles_data, colWidths=[65, 115, 140, 184])
@@ -392,38 +392,34 @@ def build_pdf(filename: str):
     story.append(t_exec)
     story.append(Spacer(1, 12))
 
-    # Section 6: Key Architectural Defense Questions
-    story.append(Paragraph("6. Architectural Defense & Design Decisions", h1_style))
+    # Section 6: Key Architectural Design Choices
+    story.append(Paragraph("6. Architectural Analysis & Engineering Design Choices", h1_style))
 
-    defense_items = [
-        ("Wire Protocol Framing",
-         "Why was length-prefixed framing chosen over delimiter-based framing (e.g. newline)?",
-         "TCP provides a continuous byte stream with no message boundaries. Delimiter-based framing requires continuous scanning of the stream and escaping of payload characters. Length-prefixed framing (!I) enables exact byte allocation upfront, eliminates parsing ambiguity with arbitrary JSON payloads, and resists fragmentation."),
+    analysis_items = [
+        ("Length-Prefixed Wire Framing",
+         "TCP provides an unstructured, stream-oriented byte service without message boundaries. The 4-byte unsigned big-endian length prefix (!I) enables exact buffer pre-allocation upfront, eliminating delimiter escaping, parser state machines, and stream fragmentation across TCP boundaries."),
 
-        ("Loop Prevention in Diamond Topology",
-         "Why does the diamond topology require a custom controller rather than default learning switches?",
-         "A 4-switch diamond contains a cyclic path. Standard flood-based learning generates an exponential broadcast storm from ARP queries. The custom controller employs directed ARP handling (packet inspection and targeted output) and installs proactive OpenFlow 1.3 flow entries."),
+        ("Directed ARP & Loop Prevention",
+         "A 4-switch diamond topology forms a physical Layer-2 cyclic loop. Rather than relying on standard broadcast flooding which triggers network-saturating broadcast storms, the custom OS-Ken controller intercepts ARP frames via PacketIn and implements targeted, point-to-point host resolution without broadcast loops."),
 
-        ("Dynamic SDN Interaction",
-         "How does the application layer interact with the SDN control plane dynamically?",
-         "The TCP Broker monitors topic publication frequency. Upon crossing the burst threshold (15 messages), it issues an HTTP POST to /sdn/policy on the controller. The controller installs flow modifications with higher priority (50) overriding default routing tables in real time."),
+        ("Dynamic Socket-to-SDN REST Coupling",
+         "Real-time application traffic statistics in the TCP Broker dynamically influence network forwarding paths. Upon detecting message burst thresholds (≥ 15 messages), an asynchronous HTTP POST to /sdn/policy triggers the controller to install priority 50 OpenFlow entries, promoting standard traffic to the Fast Path mid-stream."),
 
-        ("Failover Mechanism",
-         "How does the network recover from physical link severance without dropping socket connections?",
-         "The controller receives PortStatus notifications (OFPPS_LINK_DOWN) on s1. It immediately modifies flow table entries across switches, routing subsequent TCP segments over the alternative branch (s3) well within TCP retransmission timeouts.")
+        ("Autonomous Sub-Second Link Failover",
+         "When the primary link is severed, the SDN controller traps OFPPS_LINK_DOWN port status events and proactively reroutes inflight TCP flows onto the backup path in under 500 ms, avoiding socket disconnections, buffer resets, and retransmission timeouts.")
     ]
 
-    for category, q, a in defense_items:
+    for title, desc in analysis_items:
         item_data = [
-            [Paragraph(f"<b>[{category}] Q:</b> {q}", body_style)],
-            [Paragraph(f"<b>Answer:</b> {a}", ParagraphStyle("Ans", parent=body_style, textColor=colors.HexColor("#065F46")))]
+            [Paragraph(f"<b>• {title}</b>", body_style)],
+            [Paragraph(desc, ParagraphStyle("Desc", parent=body_style, textColor=DARK_TEXT))]
         ]
         t_item = Table(item_data, colWidths=[504])
         t_item.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
             ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
             ('LINEBELOW', (0, 0), (-1, 0), 0.5, colors.HexColor("#E2E8F0")),
-            ('PADDING', (0, 0), (-1, -1), 4),
+            ('PADDING', (0, 0), (-1, -1), 5),
         ]))
         story.append(t_item)
         story.append(Spacer(1, 6))

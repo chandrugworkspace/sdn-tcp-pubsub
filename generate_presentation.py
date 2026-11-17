@@ -9,7 +9,7 @@ Produces a 12-slide, 16:9 widescreen presentation deck complete with:
 - OpenFlow 1.3 Controller Logic & Directed ARP Loop Prevention
 - Dynamic QoS Burst Trigger & Sub-Second Link Failover
 - Empirical Latency Plots & Benchmarking Analysis
-- 40-Mark Rubric Mapping & 7-Minute Viva Presentation Flow
+- 40-Mark Rubric Mapping & 7-Minute Presentation Flow
 """
 
 import os
@@ -812,7 +812,7 @@ def create_deck():
         ("Tkinter Desktop GUI (gui.py):", "Multi-pane desktop window with independent terminal displays for Broker, Subscriber, and Publisher."),
         ("Automated Runner (run_local_demo.py):", "Single-command demo runner that spawns Broker, connects dual subscribers, streams traffic, and generates latency plots automatically."),
         ("Unit & Integration Test Suite:", "test_pubsub.py validates framing roundtrips, multi-subscriber fanout, and dynamic SDN burst triggers via unittest."),
-        ("Teammate Viva Guide (TEAM_MEMBER_GUIDE.md):", "Comprehensive role-based scripts, commands, and viva defenses mapped directly to teacher rubrics.")
+        ("Formal Project Report (PDF):", "Comprehensive evaluation report detailing system architecture, wire protocol framing, SDN steering, and latency metrics.")
     ]
     for t, d in gui_features:
         pt = tf_g.add_paragraph()
@@ -866,7 +866,7 @@ def create_deck():
     row_data = [
         ("Member 1", "TCP Socket & Protocol Lead", "pubsub/protocol.py\npubsub/broker.py\npubsub/subscriber.py\npubsub/publisher.py\ntui.py", "15 Marks\n(Deliverable 1)", "• TCP Socket Implementation (4M)\n• Complete Application Logic (4M)\n• 4-Byte Wire Protocol Framing\n• Topic Subscriptions & ACKs"),
         ("Member 2", "SDN Controller & Topology Lead", "topology/pubsub_topo.py\ncontroller/sdn_controller.py", "10 Marks\n(Deliverable 2)", "• Mininet Diamond Topology (4M)\n• OpenFlow 1.3 Controller (6M)\n• Port-Based QoS Steering\n• Loop-Free Directed ARP"),
-        ("Member 3", "Integration, Fault Tolerance & Evaluation Lead", "Dynamic Webhook in broker.py\nsdn_controller.py\nbenchmarks/plot_metrics.py\nREADME.md & Guides", "15 Marks\n(Deliverable 2)", "• Socket-SDN Integration (3M)\n• Dynamic Webhook Promotion (6M)\n• Link Failover Robustness (4M)\n• Latency Evaluation & Viva (6M)")
+        ("Member 3", "Integration, Fault Tolerance & Evaluation Lead", "Dynamic Webhook in broker.py\nsdn_controller.py\nbenchmarks/plot_metrics.py\nREADME.md & Report", "15 Marks\n(Deliverable 2)", "• Socket-SDN Integration (3M)\n• Dynamic Webhook Promotion (6M)\n• Link Failover Robustness (4M)\n• Latency Evaluation & Report (6M)")
     ]
 
     for row_idx, row_vals in enumerate(row_data):
@@ -884,11 +884,11 @@ def create_deck():
                 p.alignment = PP_ALIGN.CENTER
 
     # =========================================================================
-    # SLIDE 12: Conclusion & Viva Defense Summary (Dark Theme)
+    # SLIDE 12: Conclusion & Project Summary (Dark Theme)
     # =========================================================================
     s12 = prs.slides.add_slide(blank_layout)
     set_slide_bg(s12, C_BG_DARK)
-    add_header(s12, "Summary & Conclusion", "Key Takeaways, Real-World Impact & Viva Defense", dark=True)
+    add_header(s12, "Summary & Conclusion", "Key Takeaways, Real-World Impact & Architecture Highlights", dark=True)
 
     # 3 Conclusion Cards
     card_w = Inches(3.65)
@@ -957,16 +957,16 @@ def create_deck():
     tf3 = tb3.text_frame
     tf3.word_wrap = True
     p = tf3.paragraphs[0]
-    p.text = "❓ Viva Defense Ready"
+    p.text = "🎯 Engineering Highlights"
     p.font.size = Pt(16)
     p.font.bold = True
     p.font.color.rgb = C_ACCENT_PURPLE
 
     c_pts3 = [
-        ("Why '!I' length prefix?", "TCP has no message boundaries; length prefixing avoids fragile delimiter escaping and buffer overruns."),
-        ("Why not simple_switch_13?", "Diamond loop causes infinite ARP broadcast storm; directed ARP is mandatory."),
-        ("How does promotion work?", "HTTP POST /sdn/policy pushes priority=50 OpenFlow rules overriding default priority=30 paths."),
-        ("Open Floor for Questions:", "Thank you, Sir/Ma'am! We welcome your questions and live demonstration requests.")
+        ("Deterministic Framing:", "4-byte '!I' length prefixing eliminates framing ambiguity and stream corruption under high load."),
+        ("Directed Control Plane:", "Custom OS-Ken controller prevents ARP storms on diamond topology and classifies QoS by port."),
+        ("Adaptive SDN Webhook:", "Application volume dynamically drives network routing policies via asynchronous REST APIs."),
+        ("Sub-Second Resilience:", "Autonomous link monitoring and rerouting guarantees high availability with zero socket disconnects.")
     ]
     for t, d in c_pts3:
         pt = tf3.add_paragraph()
